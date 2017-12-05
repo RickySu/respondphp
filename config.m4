@@ -25,6 +25,8 @@ PHP_ARG_WITH(openssl, for OpenSSL support in event,
 PHP_ARG_WITH(openssl-dir, for OpenSSL installation prefix,
 [  --with-openssl-dir[=DIR]  openssl installation prefix], no, no)
 
+PHP_ARG_WITH(uv-dir, for libuv installation prefix,
+[  --with-uv-dir[=DIR]       libuv installation prefix], no, no)
 
 if test "$PHP_RESPONDPHP" != "no"; then
   dnl Write more examples of tests here...
@@ -32,6 +34,23 @@ if test "$PHP_RESPONDPHP" != "no"; then
   modules="
     respondphp.c
   "
+
+  if test -z "$UV_DIR"; then
+    for i in /usr /usr/local /opt; do
+      if test -f $i/include/uv.h; then
+        UV_DIR=$i
+      fi
+    done
+  fi
+
+  PHP_CHECK_LIBRARY(uv, uv_pipe_getsockname, [
+    AC_DEFINE(HAVE_UV, 1, [Have libuv 1.3.0 or later])
+    PHP_ADD_LIBRARY_WITH_PATH(uv, $UV_DIR, RESPONDPHP_SHARED_LIBADD)
+  ], [
+    AC_MSG_ERROR([libuv libraries not found. Check the path given to --with-uv-dir and output in config.log])
+  ], [
+    -L$UV_DIR
+  ])
 
   dnl {{{ --with--openssl
   if test "$PHP_OPENSSL" != "no"; then
