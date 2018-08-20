@@ -1,11 +1,6 @@
-dnl $Id$
-dnl config.m4 for extension respondphp
+THIRDPARTY_BUILD_DIR="$srcdir/thirdparty/build"
 
-dnl Comments in this file start with the string 'dnl'.
-dnl Remove where necessary. This file will not work
-dnl without editing.
-
-dnl If your extension references something external, use with:
+PHP_ADD_INCLUDE("$srcdir/thirdparty/libuv/include")
 
 PHP_ARG_WITH(respondphp, for respondphp support,
 dnl Make sure that the comment is aligned:
@@ -25,33 +20,24 @@ PHP_ARG_WITH(openssl, for OpenSSL support in event,
 PHP_ARG_WITH(openssl-dir, for OpenSSL installation prefix,
 [  --with-openssl-dir[=DIR]  openssl installation prefix], no, no)
 
-PHP_ARG_WITH(uv-dir, for libuv installation prefix,
-[  --with-uv-dir[=DIR]       libuv installation prefix], no, no)
+PHP_ARG_WITH(debug-respondphp, whether to enable debug respondphp support,
+[  --with-debug-respondphp   include debug respondphp support], no, no)
 
 if test "$PHP_RESPONDPHP" != "no"; then
   dnl Write more examples of tests here...
 
   modules="
     respondphp.c
+    src/respond_event_loop.c
   "
 
-  if test -z "$UV_DIR"; then
-    for i in /usr /usr/local /opt; do
-      if test -f $i/include/uv.h; then
-        UV_DIR=$i
-      fi
-    done
+  if test "$PHP_DEBUG_RESPONDPHP" == "no"; then
+      DEBUG_RESPONDPHP="-DNDEBUG"
+      CPPFLAGS="$CPPFLAGS $DEBUG_RESPONDPHP"
+      PHP_SUBST(DEBUG_RESPONDPHP)
+
   fi
-
-  PHP_CHECK_LIBRARY(uv, uv_pipe_getsockname, [
-    AC_DEFINE(HAVE_UV, 1, [Have libuv 1.3.0 or later])
-    PHP_ADD_LIBRARY_WITH_PATH(uv, $UV_DIR, RESPONDPHP_SHARED_LIBADD)
-  ], [
-    AC_MSG_ERROR([libuv libraries not found. Check the path given to --with-uv-dir and output in config.log])
-  ], [
-    -L$UV_DIR
-  ])
-
+  
   dnl {{{ --with--openssl
   if test "$PHP_OPENSSL" != "no"; then
     test -z "$PHP_OPENSSL" && PHP_OPENSSL=no
@@ -72,6 +58,8 @@ if test "$PHP_RESPONDPHP" != "no"; then
 
   RESPONDPHP_SHARED_LIBADD="-lrt -lpthread $RESPONDPHP_SHARED_LIBADD"
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+  PHP_ADD_MAKEFILE_FRAGMENT([Makefile.thirdparty])
+  shared_objects_respondphp="$THIRDPARTY_BUILD_DIR/lib/libuv.a $shared_objects_respondphp"
   PHP_SUBST(RESPONDPHP_SHARED_LIBADD)
 
 fi
