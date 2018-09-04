@@ -2,13 +2,17 @@
 #define _RESPONDPHP_H
 
 #ifdef HAVE_CONFIG_H
-  #include "config.h"
+    #include "config.h"
 #endif
 
 #ifdef NDEBUG
-  #define RESPOND_ASSERT(exp)
+    #define RESPOND_ASSERT(exp)
 #else
-  #define RESPOND_ASSERT(exp) ZEND_ASSERT(exp)  
+    #define RESPOND_ASSERT(exp) ZEND_ASSERT(exp)  
+#endif
+
+#ifdef HAVE_JEMALLOC
+    #include <jemalloc/jemalloc.h>
 #endif
 
 #include <php.h>

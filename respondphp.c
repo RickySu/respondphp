@@ -26,7 +26,6 @@ zend_module_entry respondphp_module_entry = {
 
 PHP_MINIT_FUNCTION(respondphp)
 {
-
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     return SUCCESS;
 }
@@ -38,6 +37,8 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 
 PHP_RINIT_FUNCTION(respondphp)
 {
+    char *a = malloc(1024);
+    free(a);
     uv_loop_init(&main_loop);
     return SUCCESS;
 }

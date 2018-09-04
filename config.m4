@@ -1,6 +1,22 @@
-THIRDPARTY_BUILD_DIR="$srcdir/thirdparty/build"
+dnl THIRDPARTY_BUILD_DIR="$srcdir/thirdparty/build"
 
-PHP_ADD_INCLUDE("$srcdir/thirdparty/libuv/include")
+dnl PHP_ADD_INCLUDE("$srcdir/thirdparty/build/include")
+
+AC_DEFUN([AC_RESPOND_HAVE_REUSEPORT],
+[
+    AC_MSG_CHECKING([for socket REUSEPORT])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+        #include <sys/socket.h>
+    ]], [[
+        int val = 1;
+        setsockopt(0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
+    ]])],[
+        AC_DEFINE(HAVE_REUSEPORT, 1, [have SO_REUSEPORT?])
+        AC_MSG_RESULT([yes])
+    ],[
+        AC_MSG_RESULT([no])
+    ])
+])
 
 PHP_ARG_WITH(respondphp, for respondphp support,
 dnl Make sure that the comment is aligned:
@@ -12,10 +28,17 @@ PHP_ARG_ENABLE(respondphp, whether to enable respondphp support,
 dnl Make sure that the comment is aligned:
 [  --enable-respondphp     Enable respondphp support])
 
+PHP_ARG_WITH(uv-dir, for libuv installation prefix,
+[  --with-uv-dir[=DIR] libuv installation prefix], no, no)
+
+PHP_ARG_WITH(jemalloc, for jemalloc support,
+[  --with-jemalloc         Include jemalloc support], no, no)
+
+PHP_ARG_WITH(jemalloc-dir, for jemalloc installation prefix,
+[  --with-jemalloc-dir[=DIR] jemalloc installation prefix], no, no)
 
 PHP_ARG_WITH(openssl, for OpenSSL support in event,
 [  --with-openssl          Include OpenSSL support], yes, no)
-
 
 PHP_ARG_WITH(openssl-dir, for OpenSSL installation prefix,
 [  --with-openssl-dir[=DIR]  openssl installation prefix], no, no)
@@ -24,42 +47,111 @@ PHP_ARG_WITH(debug-respondphp, whether to enable debug respondphp support,
 [  --with-debug-respondphp   include debug respondphp support], no, no)
 
 if test "$PHP_RESPONDPHP" != "no"; then
-  dnl Write more examples of tests here...
 
+  AC_RESPOND_HAVE_REUSEPORT
+      
   modules="
     respondphp.c
     src/respond_event_loop.c
   "
 
+  PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+  
   if test "$PHP_DEBUG_RESPONDPHP" == "no"; then
-      DEBUG_RESPONDPHP="-DNDEBUG"
-      CPPFLAGS="$CPPFLAGS $DEBUG_RESPONDPHP"
-      PHP_SUBST(DEBUG_RESPONDPHP)
+    NO_DEBUG_RESPONDPHP="-DNDEBUG -O3"
+    CPPFLAGS="$CPPFLAGS $DEBUG_RESPONDPHP"
+    PHP_SUBST(NO_DEBUG_RESPONDPHP)
+  fi  
 
+  dnl {{{ --with-uv
+  if test "$PHP_UV_DIR" != "no"; then
+    UV_INCLUDE="$PHP_UV_DIR/include"
+    PHP_ADD_INCLUDE("${UV_INCLUDE}")
+    PHP_ADD_LIBRARY(uv, 1, RESPONDPHP_SHARED_LIBADD)
+    PHP_ADD_LIBRARY_WITH_PATH(uv, "${PHP_UV_DIR}/${PHP_LIBDIR}")
+  else
+    UV_SEARCH_PATHS="/usr /usr/local /opt /usr/local/uv"
+    for i in $UV_SEARCH_PATHS; do        
+      for j in include ""; do
+        if test -r "$i/$j/uv.h"; then
+          UV_INCLUDE="$i/$j"
+        fi
+      done
+    done
+    PHP_CHECK_LIBRARY(uv, uv_pipe_getsockname, [
+      AC_DEFINE(HAVE_UV, 1, [Have libuv 1.3.0 or later])
+      PHP_ADD_INCLUDE("${UV_INCLUDE}")
+    ], [
+      AC_MSG_ERROR([libuv libraries not found. Check the path given to --with-uv-dir and output in config.log])
+    ], [
+    ])
+    PHP_ADD_INCLUDE("${UV_INCLUDE}")
+    PHP_ADD_LIBRARY(uv, 1, RESPONDPHP_SHARED_LIBADD)
+    AC_MSG_RESULT(libuv include success)
+  fi    
+  dnl }}}
+
+  dnl {{{ --with--jemalloc
+  if test "$PHP_JEMALLOC" != "no" || test "$PHP_JEMALLOC_DIR" != "no"; then
+    if test "$PHP_JEMALLOC_DIR" != "no"; then
+      AC_MSG_RESULT(jemalloc include success)
+      JEMALLOC_INCLUDE="$PHP_JEMALLOC_DIR/include"
+      PHP_ADD_LIBRARY_WITH_PATH(jemalloc, "${PHP_JEMALLOC_DIR}/${PHP_LIBDIR}")
+    else
+      JEMALLOC_SEARCH_PATHS="/usr /usr/local /usr/local/jemalloc"
+      for i in $JEMALLOC_SEARCH_PATHS; do        
+        for j in include ""; do
+          if test -r "$i/$j/jemalloc/jemalloc.h"; then
+            JEMALLOC_INCLUDE="$i/$j"
+            AC_MSG_RESULT(jemalloc.h found in $JEMALLOC_INCLUDE)
+            PHP_ADD_LIBRARY(jemalloc, 1, RESPONDPHP_SHARED_LIBADD)
+            break
+          fi
+        done
+      done
+      if test -z "$JEMALLOC_INCLUDE"; then
+        AC_MSG_ERROR([jemalloc libraries not found. Check the path given to --with-jemalloc-dir and output in config.log])
+      fi
+    fi
+    PHP_ADD_INCLUDE("${JEMALLOC_INCLUDE}")
+    AC_DEFINE(HAVE_JEMALLOC, 1, [have jemalloc?])
   fi
+  dnl }}}
   
   dnl {{{ --with--openssl
-  if test "$PHP_OPENSSL" != "no"; then
-    test -z "$PHP_OPENSSL" && PHP_OPENSSL=no
-
-    if test -z "$PHP_OPENSSL_DIR" || test $PHP_OPENSSL_DIR == "no"; then
-      PHP_OPENSSL_DIR=yes
-    fi
-    PHP_SETUP_OPENSSL(RESPONDPHP_SHARED_LIBADD, [
-      AC_DEFINE(HAVE_OPENSSL,1,[ ])
-    ], [
-      AC_MSG_ERROR([OpenSSL libraries not found.
-          Check the path given to --with-openssl-dir and output in config.log
+  if test "$PHP_OPENSSL" != "no" || test "$PHP_OPENSSL_DIR" != "no"; then
+    if test "$PHP_OPENSSL_DIR" != "no"; then
+      OPENSSL_INCLUDE="$PHP_OPENSSL_DIR/include"
+      PHP_ADD_LIBRARY_WITH_PATH(ssl, "${PHP_OPENSSL_DIR}/${PHP_LIBDIR}")
+      PHP_ADD_LIBRARY_WITH_PATH(crypto, "${PHP_OPENSSL_DIR}/${PHP_LIBDIR}")
+    else
+      OPENSSL_SEARCH_PATHS="/usr /usr/local /usr/local/openssl"
+      for i in $OPENSSL_SEARCH_PATHS; do        
+        for j in include ""; do
+          if test -r "$i/$j/openssl/ssl.h"; then
+            OPENSSL_INCLUDE="$i/$j"
+            AC_MSG_RESULT(ssl.h found in $OPENSSL_INCLUDE)
+            break
+          fi
+        done
+      done
+      PHP_CHECK_LIBRARY(ssl, SSL_connect, [
+        AC_DEFINE(HAVE_OPENSSL, 1, [Have openssl?])
+        PHP_ADD_INCLUDE("${OPENSSL_INCLUDE}")
+      ], [
+        AC_MSG_ERROR([openssl libraries not found. Check the path given to --with-openssl-dir and output in config.log])
+      ], [
       ])
-    ])
-    PHP_ADD_LIBRARY(ssl, RESPONDPHP_SHARED_LIBADD)
+      PHP_ADD_INCLUDE("${OPENSSL_INCLUDE}")
+      PHP_ADD_LIBRARY(ssl, 1, RESPONDPHP_SHARED_LIBADD)
+      PHP_ADD_LIBRARY(crypto, 1, RESPONDPHP_SHARED_LIBADD)
+      AC_MSG_RESULT(libuv include success)
+    fi
   fi
   dnl }}}
 
-  RESPONDPHP_SHARED_LIBADD="-lrt -lpthread $RESPONDPHP_SHARED_LIBADD"
-  PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
-  PHP_ADD_MAKEFILE_FRAGMENT([Makefile.thirdparty])
-  shared_objects_respondphp="$THIRDPARTY_BUILD_DIR/lib/libuv.a $shared_objects_respondphp"
+  RESPONDPHP_SHARED_LIBADD="-lrt -lpthread $RESPONDPHP_SHARED_LIBADD"  
+  dnl PHP_ADD_MAKEFILE_FRAGMENT([Makefile.libuv])
+  dnl shared_objects_respondphp="$THIRDPARTY_BUILD_DIR/lib/libuv.a $shared_objects_respondphp"
   PHP_SUBST(RESPONDPHP_SHARED_LIBADD)
-
 fi
