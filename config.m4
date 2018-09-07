@@ -1,6 +1,7 @@
 dnl THIRDPARTY_BUILD_DIR="$srcdir/thirdparty/build"
 
-dnl PHP_ADD_INCLUDE("$srcdir/thirdparty/build/include")
+PHP_ADD_INCLUDE("$srcdir/include")
+PHP_ADD_INCLUDE("$srcdir/thirdparty/picohttpparser")
 
 AC_DEFUN([AC_RESPOND_HAVE_REUSEPORT],
 [
@@ -43,24 +44,27 @@ PHP_ARG_WITH(openssl, for OpenSSL support in event,
 PHP_ARG_WITH(openssl-dir, for OpenSSL installation prefix,
 [  --with-openssl-dir[=DIR]  openssl installation prefix], no, no)
 
-PHP_ARG_WITH(debug-respondphp, whether to enable debug respondphp support,
-[  --with-debug-respondphp   include debug respondphp support], no, no)
+PHP_ARG_ENABLE(debug-respondphp, whether to enable debug respondphp support,
+[  --enable-debug-respondphp Enable debug respondphp support])
 
 if test "$PHP_RESPONDPHP" != "no"; then
 
   AC_RESPOND_HAVE_REUSEPORT
       
   modules="
+    thirdparty/picohttpparser/picohttpparser.c
     respondphp.c
-    src/respond_event_loop.c
+    src/event_loop.c
+    src/reactor.c
+    src/worker_manager.c
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
   
-  if test "$PHP_DEBUG_RESPONDPHP" == "no"; then
+  if test "$PHP_DEBUG_RESPONDPHP" != "yes"; then
     NO_DEBUG_RESPONDPHP="-DNDEBUG -O3"
-    CPPFLAGS="$CPPFLAGS $DEBUG_RESPONDPHP"
-    PHP_SUBST(NO_DEBUG_RESPONDPHP)
+    AC_DEFINE(HAVE_NO_DEBUG, 1, [Disable debug])
+    CFLAGS="$CFLAGS $NO_DEBUG_RESPONDPHP"    
   fi  
 
   dnl {{{ --with-uv
@@ -150,8 +154,9 @@ if test "$PHP_RESPONDPHP" != "no"; then
   fi
   dnl }}}
 
+
+  CFLAGS="$CFLAGS -Wall -pthread -fPIC"
   RESPONDPHP_SHARED_LIBADD="-lrt -lpthread $RESPONDPHP_SHARED_LIBADD"  
-  dnl PHP_ADD_MAKEFILE_FRAGMENT([Makefile.libuv])
   dnl shared_objects_respondphp="$THIRDPARTY_BUILD_DIR/lib/libuv.a $shared_objects_respondphp"
   PHP_SUBST(RESPONDPHP_SHARED_LIBADD)
 fi

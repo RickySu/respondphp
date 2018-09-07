@@ -1,6 +1,5 @@
 #include "respondphp.h"
 #include "version.h"
-
 uv_loop_t main_loop;
 
 zend_module_entry respondphp_module_entry = {
@@ -37,15 +36,11 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 
 PHP_RINIT_FUNCTION(respondphp)
 {
-    char *a = malloc(1024);
-    free(a);
-    uv_loop_init(&main_loop);
     return SUCCESS;
 }
 
 PHP_RSHUTDOWN_FUNCTION(respondphp)
 {
-    uv_loop_close(&main_loop);
     return SUCCESS;
 }
 
