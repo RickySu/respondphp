@@ -28,6 +28,7 @@ typedef struct rp_reactor_s {
     uv_buf_t               dummy_buf;
     uv_connection_cb       connection_cb;
     rp_accepted_cb         accepted_cb;
+    zval                   *server;
     struct rp_reactor_s    *self;
     struct rp_reactor_s    *next;
 } rp_reactor_t;
@@ -37,6 +38,7 @@ typedef struct rp_client_s{
         uv_pipe_t pipe;
         uv_tcp_t tcp;        
     } stream;
-    rp_reactor_t *reactor;
+    zval              *connection;
+    rp_reactor_t      *reactor;
 } rp_client_t;
 #endif

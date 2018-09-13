@@ -24,7 +24,8 @@ PHP_METHOD(respond_event_loop, alive);
 PHP_METHOD(respond_event_loop, __construct);
 PHP_METHOD(respond_event_loop, create);
 
-DECLARE_FUNCTION_ENTRY(respond_event_loop) = {
+DECLARE_FUNCTION_ENTRY(respond_event_loop) =
+{
     PHP_ME(respond_event_loop, create, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(respond_event_loop, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(respond_event_loop, run, ARGINFO(respond_event_loop, run), ZEND_ACC_PUBLIC)

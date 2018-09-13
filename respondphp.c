@@ -2,7 +2,13 @@
 #include "version.h"
 uv_loop_t main_loop;
 
-zend_module_entry respondphp_module_entry = {
+static void implements_interfaces()
+{
+//    IMPLEMENTS_ENTRY_FUNCTION_C(respond_server_tcp);
+}
+
+zend_module_entry respondphp_module_entry =
+{
 #if ZEND_MODULE_API_NO >= 20010901
     STANDARD_MODULE_HEADER,
 #endif
@@ -27,6 +33,7 @@ PHP_MINIT_FUNCTION(respondphp)
 {
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
+    CLASS_ENTRY_FUNCTION_C(respond_connection_connection);
     return SUCCESS;
 }
 
@@ -38,6 +45,7 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 PHP_RINIT_FUNCTION(respondphp)
 {
     zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
+    implements_interfaces();
     return SUCCESS;
 }
 

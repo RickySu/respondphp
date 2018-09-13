@@ -5,6 +5,12 @@
 
 #define OBJECT_HANDLER(name) object_handler_##name
 
+#define IMPLEMENTS_ENTRY_FUNCTION_D(name) \
+    void init_respondphp_implements_##name()
+
+#define IMPLEMENTS_ENTRY_FUNCTION_C(name) \
+    init_respondphp_implements_##name()
+
 #define CLASS_ENTRY_FUNCTION_D(name) \
     void init_respondphp_ce_##name()
 
@@ -79,3 +85,21 @@
 
 #endif
 
+#define IMPLEMENTS_INTERFACE(classname, interface) \
+    do{ \
+        zend_string *interface_##interface##_name = zend_string_init(ZEND_STRL(interface), 0); \
+        zend_class_entry *interface_##interface##_ce = zend_fetch_class(interface_##interface##_name, ZEND_FETCH_CLASS_AUTO); \
+        zend_class_implements(CLASS_ENTRY(classname), 1, interface_##interface##_ce); \
+        zend_string_release(interface_##interface##_name); \
+    } while(0)
+
+#define TRAIT_METHOD_NAME(trait_name, method_name)  rp_trait_##trait_name##_##method_name
+#define TRAIT_FUNCTION_ENTRY_ME(ce, trait_name) TRAIT_FUNCTION_ENTRY_ME_##trait_name(ce)
+#define TRAIT_PHP_METHOD(ce, trait_name) TRAIT_PHP_METHOD_##trait_name(ce)
+#define TRAIT_PHP_METHOD_USE(ce, trait_name) TRAIT_PHP_METHOD_USE_##trait_name(ce)
+#define TRAIT_PHP_METHOD_DEFINE(trait_name, method_name) TRAIT_METHOD_NAME(trait_name, method_name)(INTERNAL_FUNCTION_PARAMETERS)
+#define TRAIT_PHP_METHOD_PASSTHRU(ce, trait_name, method_name) \
+PHP_METHOD(ce, method_name) \
+{ \
+    TRAIT_METHOD_NAME(trait_name, method_name)(INTERNAL_FUNCTION_PARAM_PASSTHRU); \
+}
