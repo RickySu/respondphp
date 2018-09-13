@@ -57,14 +57,16 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/event_loop.c
     src/reactor.c
     src/worker_manager.c
+    src/server/tcp.c
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
-  
+  echo $PHP_DEBUG_RESPONDPHP
   if test "$PHP_DEBUG_RESPONDPHP" != "yes"; then
-    NO_DEBUG_RESPONDPHP="-DNDEBUG -O3"
-    AC_DEFINE(HAVE_NO_DEBUG, 1, [Disable debug])
-    CFLAGS="$CFLAGS $NO_DEBUG_RESPONDPHP"    
+    NO_DEBUG_RESPONDPHP="-DNDEBUG -O3"    
+    CFLAGS="$CFLAGS $NO_DEBUG_RESPONDPHP"
+  else
+    AC_DEFINE(HAVE_DEBUG, 1, [Enable debug])
   fi  
 
   dnl {{{ --with-uv

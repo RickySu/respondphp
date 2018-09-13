@@ -1,5 +1,9 @@
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "respondphp.h"
 #include "worker_manager.h"
+
 static uint rp_worker_count = 0;
 static rp_task_type_t rp_task_type = ACTOR;
 

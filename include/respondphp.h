@@ -5,10 +5,10 @@
     #include "config.h"
 #endif
 
-#ifdef NDEBUG
-    #define RESPOND_ASSERT(exp)
+#ifdef HAVE_DEBUG
+    #define RP_ASSERT(exp) ZEND_ASSERT(exp)
 #else
-    #define RESPOND_ASSERT(exp) ZEND_ASSERT(exp)  
+    #define RP_ASSERT(exp)
 #endif
 
 #ifdef HAVE_JEMALLOC
@@ -20,6 +20,7 @@
 #include <uv.h>
 #include "types.h"
 #include "common.h"
+#include "fcall.h"
 
 extern uv_loop_t main_loop;
 
@@ -32,9 +33,12 @@ PHP_RSHUTDOWN_FUNCTION(respondphp);
 extern zend_module_entry respondphp_module_entry;
 
 DECLARE_CLASS_ENTRY(respond_event_loop);
+DECLARE_CLASS_ENTRY(respond_server_tcp);
 
 int rp_init_worker_manager();
 int rp_init_reactor(int fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
+rp_reactor_t *rp_reactor_add();
+void rp_reactor_send(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb);
 #endif

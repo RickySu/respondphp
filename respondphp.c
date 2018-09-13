@@ -26,6 +26,7 @@ zend_module_entry respondphp_module_entry = {
 PHP_MINIT_FUNCTION(respondphp)
 {
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
+    CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
     return SUCCESS;
 }
 
