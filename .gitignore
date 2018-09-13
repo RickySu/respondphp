@@ -35,4 +35,5 @@ tests/*/*.log
 tests/*/*.sh
 phpsrc/vendor
 phpsrc/dist
+phpsrc/composer.lock
 predefine.h

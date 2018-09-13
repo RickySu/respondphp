@@ -1,0 +1,21 @@
+all: predefined.h
+
+clean:
+	rm -rf phpsrc/vendor
+	rm -f predefine.h phpsrc/composer.lock phpsrc/dist/* thirdparty/composer.phar
+
+thirdparty/composer.phar:
+	@echo "Retrieve composer..."
+	php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+	php composer-setup.php
+	php -r "unlink('composer-setup.php');"
+	mv composer.phar thirdparty
+
+phpsrc/dist/packed.php:  thirdparty/composer.phar
+	mkdir -p phpsrc/dist
+	php thirdparty/composer.phar -dphpsrc --no-dev install
+	php thirdparty/composer.phar -dphpsrc dump-autoload
+	php phpsrc/pack/convert.php pack -s phpsrc/src -o phpsrc/dist/packed.php
+
+predefined.h: phpsrc/dist/packed.php
+	php phpsrc/pack/convert.php dump -i phpsrc/dist/packed.php -o predefine.h
