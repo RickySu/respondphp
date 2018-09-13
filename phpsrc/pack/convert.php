@@ -10,6 +10,7 @@ if (PHP_SAPI !== 'cli') {
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     // Called from local git clone.
     require __DIR__ . '/../vendor/autoload.php';
+    echo __DIR__ . '/../vendor/autoload.php'."\n";
 } elseif (file_exists(__DIR__ . '/../../../autoload.php')) {
     // Called from your project's vendor dir.
     require __DIR__ . '/../../../autoload.php';

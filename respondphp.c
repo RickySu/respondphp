@@ -37,6 +37,7 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 
 PHP_RINIT_FUNCTION(respondphp)
 {
+    zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
     return SUCCESS;
 }
 

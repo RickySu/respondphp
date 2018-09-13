@@ -35,3 +35,4 @@ tests/*/*.log
 tests/*/*.sh
 phpsrc/vendor
 phpsrc/dist
+predefine.h

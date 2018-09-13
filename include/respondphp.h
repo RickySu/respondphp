@@ -18,6 +18,8 @@
 #include <php.h>
 #include <ext/standard/info.h>
 #include <uv.h>
+#include "config.h"
+#include "predefine.h"
 #include "types.h"
 #include "common.h"
 #include "fcall.h"

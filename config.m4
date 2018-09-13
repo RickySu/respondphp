@@ -47,11 +47,14 @@ PHP_ARG_WITH(openssl-dir, for OpenSSL installation prefix,
 PHP_ARG_ENABLE(debug-respondphp, whether to enable debug respondphp support,
 [  --enable-debug-respondphp Enable debug respondphp support])
 
+PHP_ARG_WITH(phpconfig-path, for PHP config path ,
+[  --with-phpconfig-path[=PATH] phpconfig path], no, no)
+
 if test "$PHP_RESPONDPHP" != "no"; then
 
   AC_RESPOND_HAVE_REUSEPORT
       
-  modules="
+  modules="   
     thirdparty/picohttpparser/picohttpparser.c
     respondphp.c
     src/event_loop.c
@@ -61,14 +64,28 @@ if test "$PHP_RESPONDPHP" != "no"; then
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
-  echo $PHP_DEBUG_RESPONDPHP
   if test "$PHP_DEBUG_RESPONDPHP" != "yes"; then
     NO_DEBUG_RESPONDPHP="-DNDEBUG -O3"    
     CFLAGS="$CFLAGS $NO_DEBUG_RESPONDPHP"
   else
     AC_DEFINE(HAVE_DEBUG, 1, [Enable debug])
+  fi
+  
+  dnl {{{ --with-phpconfig-path
+  if test "$PHP_PHPCONFIG_PATH" != "no"; then
+    PHP_CONFIG=$PHP_PHPCONFIG_PATH
+  else
+    PHP_CONFIG=`which php-config`
+  fi
+  if test ! -x "$PHP_CONFIG"; then
+    AC_MSG_ERROR([php-config not found. Check the path given to --with-phpconfig-path and output in config.log])
+  fi
+  PHP_PATH=`$PHP_CONFIG --php-binary`
+  if test "x$PHP_PATH" == "x" || test ! -x "$PHP_PATH"; then
+    AC_MSG_ERROR([php-binary not found. Please install PHP CLI])
   fi  
-
+  PHP_PATH=$PHP_PATH make -f Makefile.predefined clean all
+  
   dnl {{{ --with-uv
   if test "$PHP_UV_DIR" != "no"; then
     UV_INCLUDE="$PHP_UV_DIR/include"
@@ -162,3 +179,5 @@ if test "$PHP_RESPONDPHP" != "no"; then
   dnl shared_objects_respondphp="$THIRDPARTY_BUILD_DIR/lib/libuv.a $shared_objects_respondphp"
   PHP_SUBST(RESPONDPHP_SHARED_LIBADD)
 fi
+
+dnl PHP_ADD_MAKEFILE_FRAGMENT([Makefile.thirdparty])

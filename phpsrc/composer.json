@@ -20,8 +20,7 @@
         "Respond\\Pack\\": "pack/"
       }
     },
-    "require": {},
-    "require-dev": {
+    "require": {
         "symfony/filesystem": "^4.1",
         "symfony/console": "^4.1",
         "symfony/finder": "^4.1"
