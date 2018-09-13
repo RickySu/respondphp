@@ -1,0 +1,29 @@
+{
+    "name": "respond/respond",
+    "authors": [
+        {
+            "name": "Ricky Su",
+            "email": "ricky@ez2.us"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Respond\\": "src/"
+        },
+        "files": [
+            "src/Async/Async.php"
+        ]
+    },
+    "autoload-dev": {
+      "psr-4": {
+        "Respond\\Tests\\": "tests/",
+        "Respond\\Pack\\": "pack/"
+      }
+    },
+    "require": {},
+    "require-dev": {
+        "symfony/filesystem": "^4.1",
+        "symfony/console": "^4.1",
+        "symfony/finder": "^4.1"
+    }
+}

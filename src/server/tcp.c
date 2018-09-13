@@ -27,7 +27,7 @@ void setSelfReference(uv_tcp_ext_t *resource)
 CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
 {
     REGISTER_CLASS_WITH_OBJECT_NEW(respond_server_tcp, "Respond\\Server\\Tcp", create_respond_server_tcp_resource);
-    OBJECT_HANDLER(respond_server_tcp).offset = offsetof(uv_tcp_ext_t, zo);
+    OBJECT_HANDLER(respond_server_tcp).offset = XtOffsetOf(uv_tcp_ext_t, zo);
     OBJECT_HANDLER(respond_server_tcp).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_tcp).free_obj = free_respond_server_tcpResource;
 }
