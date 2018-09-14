@@ -24,20 +24,16 @@ void setSelfReference(rp_tcp_ext_t *resource)
     resource->flag |= UV_TCP_HANDLE_INTERNAL_REF;
 }
 
-IMPLEMENTS_ENTRY_FUNCTION_D(respond_server_tcp)
-{
-    IMPLEMENTS_INTERFACE(respond_server_tcp, PREDEFINED_PHP_Respond_Event_EventEmitterInterface);
-}
-
 CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
 {
     REGISTER_CLASS_WITH_OBJECT_NEW(respond_server_tcp, "Respond\\Server\\Tcp", create_respond_server_tcp_resource);
     OBJECT_HANDLER(respond_server_tcp).offset = XtOffsetOf(rp_tcp_ext_t, zo);
     OBJECT_HANDLER(respond_server_tcp).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_tcp).free_obj = free_respond_server_tcp_resource;
+    zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
 }
 
-TRAIT_PHP_METHOD_USE(respond_server_tcp, event_emitter)
+TRAIT_PHP_METHOD_USE(respond_server_tcp, event_emitter, rp_tcp_ext_t, event_hook);
 
 void releaseResource(rp_tcp_ext_t *resource)
 {
@@ -98,8 +94,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     char cstr_host[30];
     struct sockaddr_in addr;
     rp_reactor_t *reactor;
-
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);    
+    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sl", &host, &host_len, &port)) {
         return;

@@ -37,8 +37,7 @@ extern zend_module_entry respondphp_module_entry;
 DECLARE_CLASS_ENTRY(respond_event_loop);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
 DECLARE_CLASS_ENTRY(respond_connection_connection);
-
-IMPLEMENTS_ENTRY_FUNCTION_D(respond_server_tcp);
+DECLARE_CLASS_ENTRY(respond_event_event_emitter_interface);
 
 int rp_init_worker_manager();
 int rp_init_reactor(int fd);

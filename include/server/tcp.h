@@ -17,6 +17,7 @@ ZEND_END_ARG_INFO()
 typedef struct {
     uint flag;
     zval zobject;
+    HashTable event_hook;
     zend_object zo;
 } rp_tcp_ext_t;
 
@@ -41,6 +42,7 @@ PHP_METHOD(respond_server_tcp, close);
 PHP_METHOD(respond_server_tcp, __construct);
 TRAIT_PHP_METHOD(respond_server_tcp, event_emitter);
 
+TRAIT_FUNCTION_ARG_INFO(respond_server_tcp, event_emitter);
 DECLARE_FUNCTION_ENTRY(respond_server_tcp) =
 {
     PHP_ME(respond_server_tcp, __construct, ARGINFO(respond_server_tcp, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)

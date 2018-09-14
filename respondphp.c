@@ -4,7 +4,7 @@ uv_loop_t main_loop;
 
 static void implements_interfaces()
 {
-//    IMPLEMENTS_ENTRY_FUNCTION_C(respond_server_tcp);
+    CLASS_ENTRY_FUNCTION_C(respond_event_event_emitter_interface);
 }
 
 zend_module_entry respondphp_module_entry =
@@ -31,6 +31,7 @@ zend_module_entry respondphp_module_entry =
 
 PHP_MINIT_FUNCTION(respondphp)
 {
+    implements_interfaces();
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
     CLASS_ENTRY_FUNCTION_C(respond_connection_connection);
@@ -45,7 +46,6 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 PHP_RINIT_FUNCTION(respondphp)
 {
     zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
-    implements_interfaces();
     return SUCCESS;
 }
 

@@ -63,6 +63,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/server/tcp.c
     src/connection/connection.c
     src/internal/event_emitter.c
+    src/interface/event_event_emitter_interface.c
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
