@@ -17,7 +17,7 @@ ZEND_END_ARG_INFO()
 typedef struct {
     uint flag;
     zval zobject;
-    HashTable event_hook;
+    event_hook_t event_hook;
     zend_object zo;
 } rp_tcp_ext_t;
 

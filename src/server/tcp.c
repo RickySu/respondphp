@@ -39,8 +39,8 @@ void releaseResource(rp_tcp_ext_t *resource)
 {
     if(resource->flag & UV_TCP_HANDLE_INTERNAL_REF) {
         resource->flag &= ~UV_TCP_HANDLE_INTERNAL_REF;
-        zval_ptr_dtor(&resource->zobject);
-    }    
+        ZVAL_PTR_DTOR(&resource->zobject);
+    }
 }
 
 static void tcp_close_cb(uv_handle_t* handle)
@@ -70,10 +70,19 @@ static void connection_cb(rp_reactor_t *reactor, int status)
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *ce)
 {
     rp_tcp_ext_t *resource;
+    zval value;
+    array_init(&value);
+    add_next_index_long(&value, 100);
+    void *a = emalloc(10);
+    fprintf(stderr, "alloc %x\n", a);
     resource = ALLOC_RESOURCE(rp_tcp_ext_t);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);    
     resource->zo.handlers = &OBJECT_HANDLER(respond_server_tcp);
+    rp_event_hook_init(&resource->event_hook);
+    zend_hash_index_add_ptr(&resource->event_hook, 0, a);
+    add_index_zval(&resource->event_hook.hook, 0, &value);
+    rp_event_hook_clean(&resource->event_hook);
     return &resource->zo;
 }
 
@@ -82,6 +91,7 @@ static void free_respond_server_tcp_resource(zend_object *object)
     rp_tcp_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_tcp_ext_t);
     releaseResource(resource);
+    rp_event_hook_destroy(&resource->event_hook);
     zend_object_std_dtor(object);
 }
 

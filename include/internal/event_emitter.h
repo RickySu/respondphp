@@ -2,6 +2,23 @@
 #define _RP_INTERNAL_EVENT_EMMITER_H
 #include "interface/event_event_emitter_interface.h"
 
+typedef struct {
+    HashTable hook_cache;
+    zval hook;
+} event_hook_t;
+
+void rp_event_hook_init(event_hook_t *hook);
+void rp_event_hook_destroy(event_hook_t *hook);
+void rp_event_hook_add(event_hook_t *hook, zval *value);
+void rp_event_hook_del(event_hook_t *hook, zval *value);
+#define rp_event_hook_clean(hook) \
+do{ \
+    rp_event_hook_destroy(hook); \
+    rp_event_hook_init(hook); \
+} while(0)
+
+static void rp_event_hook_cache_free(zval *hook);
+
 #define TRAIT_FUNCTION_ENTRY_ME_event_emitter(ce) \
     PHP_ME(ce, on, ARGINFO(ce, on), ZEND_ACC_PUBLIC) \
     PHP_ME(ce, off, ARGINFO(ce, off), ZEND_ACC_PUBLIC) \
