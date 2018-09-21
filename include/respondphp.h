@@ -38,6 +38,7 @@ DECLARE_CLASS_ENTRY(respond_event_loop);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
 DECLARE_CLASS_ENTRY(respond_connection_connection);
 DECLARE_CLASS_ENTRY(respond_event_event_emitter_interface);
+DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 
 int rp_init_worker_manager();
 int rp_init_reactor(int fd);

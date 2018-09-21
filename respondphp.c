@@ -5,6 +5,7 @@ uv_loop_t main_loop;
 static void implements_interfaces()
 {
     CLASS_ENTRY_FUNCTION_C(respond_event_event_emitter_interface);
+    CLASS_ENTRY_FUNCTION_C(respond_stream_writable_stream_interface);
 }
 
 zend_module_entry respondphp_module_entry =
