@@ -3,14 +3,27 @@
 #include "interface/event_event_emitter_interface.h"
 
 typedef struct {
+    HashTable ht;
+    int n;
+} ht_counter_t;
+
+typedef struct {
     HashTable hook_cache;
+    HashTable internal_hook;
     zval hook;
 } event_hook_t;
 
+void rp_event_emitter_on(event_hook_t *event_hook, zend_string *event, zval *hook);
+void rp_event_emitter_off(event_hook_t *event_hook, zend_string *event, zval *hook);
+void rp_event_emitter_removeListeners(event_hook_t *event_hook, zend_string *event);
+zval *rp_event_emitter_getListeners(event_hook_t *event_hook, zend_string *event);
+void rp_event_emitter_emit(event_hook_t *event_hook, zend_string *event, zval *param);
+
 void rp_event_hook_init(event_hook_t *hook);
 void rp_event_hook_destroy(event_hook_t *hook);
-void rp_event_hook_add(event_hook_t *hook, zval *value);
-void rp_event_hook_del(event_hook_t *hook, zval *value);
+static void rp_event_hook_cache_list_free(zval *hook);
+static void rp_event_hook_cache_free(zval *hook);
+
 #define rp_event_hook_clean(hook) \
 do{ \
     rp_event_hook_destroy(hook); \
@@ -41,13 +54,6 @@ static void rp_event_hook_cache_free(zval *hook);
     PHP_METHOD(ce, removeListeners); \
     PHP_METHOD(ce, getListeners); \
     PHP_METHOD(ce, emit)
-
-#define TRAIT_PHP_METHOD_USE_event_emitter(ce, resource_type, resource_field) \
-    TRAIT_PHP_METHOD_PASSTHRU(ce, event_emitter, on, resource_type, resource_field) \
-    TRAIT_PHP_METHOD_PASSTHRU(ce, event_emitter, off, resource_type, resource_field) \
-    TRAIT_PHP_METHOD_PASSTHRU(ce, event_emitter, removeListeners, resource_type, resource_field) \
-    TRAIT_PHP_METHOD_PASSTHRU(ce, event_emitter, getListeners, resource_type, resource_field) \
-    TRAIT_PHP_METHOD_PASSTHRU(ce, event_emitter, emit, resource_type, resource_field)
 
 TRAIT_PHP_METHOD_DEFINE(event_emitter, on);
 TRAIT_PHP_METHOD_DEFINE(event_emitter, off);
