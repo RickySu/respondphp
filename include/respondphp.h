@@ -40,6 +40,7 @@ DECLARE_CLASS_ENTRY(respond_connection_connection);
 DECLARE_CLASS_ENTRY(respond_event_event_emitter_interface);
 DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
+DECLARE_CLASS_ENTRY(respond_socket_connection_interface);
 
 int rp_init_worker_manager();
 int rp_init_reactor(int fd);

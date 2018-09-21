@@ -2,11 +2,11 @@
 #define _RP_STREAM_WRITABLE_STREAM_INTERFACE_H
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_stream_writable_stream_interface_isWritable(ce) \
-    RP_BEGIN_ARG_INFO(ARGINFO(ce, isWritable), _IS_BOOL, 1) \
+    RP_BEGIN_ARG_INFO(ARGINFO(ce, isWritable), _IS_BOOL, 0) \
     ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_stream_writable_stream_interface_write(ce) \
-    RP_BEGIN_ARG_INFO(ARGINFO(ce, write), _IS_BOOL, 1) \
+    RP_BEGIN_ARG_INFO(ARGINFO(ce, write), _IS_BOOL, 0) \
         ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0) \
     ZEND_END_ARG_INFO()
 

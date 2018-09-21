@@ -66,6 +66,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/interface/event_event_emitter_interface.c
     src/interface/stream_writable_stream_interface.c
     src/interface/stream_readable_stream_interface.c
+    src/interface/socket_connection_interface.c
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)

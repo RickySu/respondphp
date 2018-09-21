@@ -2,7 +2,7 @@
 #define _RP_STREAM_READABLE_STREAM_INTERFACE_H
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_stream_readable_stream_interface_isReadable(ce) \
-    RP_BEGIN_ARG_INFO(ARGINFO(ce, isReadable), _IS_BOOL, 1) \
+    RP_BEGIN_ARG_INFO(ARGINFO(ce, isReadable), _IS_BOOL, 0) \
     ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_stream_readable_stream_interface_close(ce) \
