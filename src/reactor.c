@@ -63,7 +63,7 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
     RP_ASSERT(reactor->self == reactor);
     
     if(client = rp_accept_client(pipe, reactor)) {
-        reactor->accepted_cb(client);
+        reactor->accepted_cb(reactor->server, client);
     }
     
 }

@@ -45,5 +45,5 @@ rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
 void rp_reactor_send(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb);
-zval *rp_connection_factory(rp_client_t *client);
+void rp_connection_factory(rp_client_t *client, zval *connection);
 #endif

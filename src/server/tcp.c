@@ -32,7 +32,7 @@ CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
     zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
 }
 
-void releaseResource(rp_tcp_ext_t *resource)
+static void releaseResource(rp_tcp_ext_t *resource)
 {
     if(resource->flag & UV_TCP_HANDLE_INTERNAL_REF) {
         resource->flag &= ~UV_TCP_HANDLE_INTERNAL_REF;
@@ -114,15 +114,18 @@ PHP_METHOD(respond_server_tcp, __construct)
     memcpy(&reactor->addr.socket_addr, &addr, sizeof(addr));
     reactor->connection_cb = connection_cb;
     reactor->accepted_cb = accepted_cb;
-    reactor->server = self;
+    reactor->server = &resource->zo;
     RETURN_LONG(ret);
 }
 
-static void accepted_cb(rp_client_t *client)
+static void accepted_cb(zend_object *server, rp_client_t *client)
 {
-    zval *connection = rp_connection_factory(client);
-    zval_ptr_dtor(connection);
-    //uv_read_start((uv_stream_t*) client, alloc_buffer, read_cb);
+    zval connection;
+    rp_tcp_ext_t *resource = FETCH_RESOURCE(server, rp_tcp_ext_t);
+    rp_connection_factory(client, &connection);
+    ZEND_ASSERT(zval_refcount_p(&connection) == 1);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("connect"), &connection);
+    ZEND_ASSERT(zval_refcount_p(&connection) >= 1);
 }
 
 PHP_METHOD(respond_server_tcp, close)
@@ -137,14 +140,15 @@ PHP_METHOD(respond_server_tcp, on)
 {
     zval *self = getThis();
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-    zend_string *event;
+    const char *event;
+    size_t event_len;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
         return;
     }
-    fprintf(stderr, "on: %.*s\n", event->len, event->val);
-    rp_event_emitter_on(&resource->event_hook, event, hook);
+    fprintf(stderr, "on: %.*s\n", event_len, event);
+    rp_event_emitter_on(&resource->event_hook, event, event_len, hook);
 //    zend_print_zval_r(&resource->event_hook.hook, 0);
 }
 
@@ -152,28 +156,29 @@ PHP_METHOD(respond_server_tcp, off)
 {
     zval *self = getThis();
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-    zend_string *event;
+    const char *event;
+    size_t event_len;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
         return;
     }
-    fprintf(stderr, "off: %.*s\n", event->len, event->val);
-    rp_event_emitter_off(&resource->event_hook, event, hook);
-//    zend_print_zval_r(&resource->event_hook.hook, 0);
+    fprintf(stderr, "off: %.*s\n", event_len, event);
+    rp_event_emitter_off(&resource->event_hook, event, event_len, hook);
 }
 
 PHP_METHOD(respond_server_tcp, removeListeners)
 {
     zval *self = getThis();
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-    zend_string *event;
+    const char *event;
+    size_t event_len;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
         return;
     }
 
-    rp_event_emitter_removeListeners(&resource->event_hook, event);
+    rp_event_emitter_removeListeners(&resource->event_hook, event, event_len);
 }
 
 PHP_METHOD(respond_server_tcp, getListeners)
@@ -181,13 +186,14 @@ PHP_METHOD(respond_server_tcp, getListeners)
     zval *self = getThis();
     zval *listeners;
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-    zend_string *event;
+    const char *event;
+    size_t event_len;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
         return;
     }
 
-    listeners = rp_event_emitter_getListeners(&resource->event_hook, event);
+    listeners = rp_event_emitter_getListeners(&resource->event_hook, event, event_len);
 
     if(listeners == NULL){
         RETURN_NULL();
@@ -200,12 +206,14 @@ PHP_METHOD(respond_server_tcp, emit)
 {
     zval *self = getThis();
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-    zend_string *event;
+    const char *event;
+    size_t event_len;
     zval *params;
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &params)) {
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &params)) {
         return;
     }
-    fprintf(stderr, "emit %.*s\n", event->len, event->val);
-    rp_event_emitter_emit(&resource->event_hook, event, params);
+    fprintf(stderr, "emit %.*s\n", event_len, event);
+    rp_event_emitter_emit(&resource->event_hook, event, event_len, params);
     RETURN_ZVAL(params, 1, 0);
 }

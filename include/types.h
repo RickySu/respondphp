@@ -7,7 +7,7 @@ struct rp_client_s;
 typedef enum {ACTOR, WORKER_MANAGER, WORKER} rp_task_type_t;
 typedef enum {RP_TCP, RP_PIPE, RP_UDP} rp_reactor_type_t;
 
-typedef void (*rp_accepted_cb)(struct rp_client_s *client);
+typedef void (*rp_accepted_cb)(zend_object *server, struct rp_client_s *client);
 
 typedef union {
     uv_tcp_t  tcp;
@@ -28,7 +28,7 @@ typedef struct rp_reactor_s {
     uv_buf_t               dummy_buf;
     uv_connection_cb       connection_cb;
     rp_accepted_cb         accepted_cb;
-    zval                   *server;
+    zend_object            *server;
     struct rp_reactor_s    *self;
     struct rp_reactor_s    *next;
 } rp_reactor_t;

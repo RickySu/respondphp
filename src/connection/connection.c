@@ -1,6 +1,11 @@
 #include "respondphp.h"
 #include "connection/connection.h"
 
+static void releaseResource(rp_connection_ext_t *resource)
+{
+    uv_close(&resource->client->stream, NULL);
+}
+
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
     buf->base = (char*) malloc(suggested_size);
@@ -16,16 +21,12 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
     free(buf->base);
 }
 
-zval *rp_connection_factory(rp_client_t *client)
+void rp_connection_factory(rp_client_t *client, zval *connection)
 {
-    zval instance;
-    object_init_ex(&instance, CLASS_ENTRY(respond_connection_connection));
-    rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(&instance, rp_connection_ext_t);
+    object_init_ex(connection, CLASS_ENTRY(respond_connection_connection));
+    rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_ext_t);
     resource->client = client;
-    ZVAL_COPY_VALUE(&resource->zobject, &instance);
     uv_read_start((uv_stream_t*) client, alloc_buffer, read_cb);
-    client->connection = &resource->zobject;
-    return client->connection;
 }
 
 static zend_object *create_respond_connection_connection_resource(zend_class_entry *ce)

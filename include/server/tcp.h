@@ -16,7 +16,6 @@ ZEND_END_ARG_INFO()
 
 typedef struct {
     uint flag;
-    zval zobject;
     event_hook_t event_hook;
     zend_object zo;
 } rp_tcp_ext_t;
@@ -31,9 +30,9 @@ static void free_respond_server_tcp_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
 static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf);
 static void connection_cb(rp_reactor_t *reactor, int status);
-static void accepted_cb(rp_client_t *client);
+static void accepted_cb(zend_object *server, rp_client_t *client);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
-void releaseResource(rp_tcp_ext_t *resource);
+static void releaseResource(rp_tcp_ext_t *resource);
 static void tcp_close_cb(uv_handle_t* handle);
 void tcp_close_socket(rp_tcp_ext_t *handle);
 void setSelfReference(rp_tcp_ext_t *resource);

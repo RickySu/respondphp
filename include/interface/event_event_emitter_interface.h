@@ -19,7 +19,7 @@
     ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_event_event_emitter_interface_getListeners(ce) \
-    RP_BEGIN_ARG_INFO(ARGINFO(ce, getListeners), IS_ARRAY, 0) \
+    RP_BEGIN_ARG_INFO(ARGINFO(ce, getListeners), IS_ARRAY, 1) \
         ZEND_ARG_TYPE_INFO(0, event, IS_STRING, 0) \
     RP_END_ARG_INFO()
 

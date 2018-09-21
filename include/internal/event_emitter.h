@@ -13,11 +13,11 @@ typedef struct {
     zval hook;
 } event_hook_t;
 
-void rp_event_emitter_on(event_hook_t *event_hook, zend_string *event, zval *hook);
-void rp_event_emitter_off(event_hook_t *event_hook, zend_string *event, zval *hook);
-void rp_event_emitter_removeListeners(event_hook_t *event_hook, zend_string *event);
-zval *rp_event_emitter_getListeners(event_hook_t *event_hook, zend_string *event);
-void rp_event_emitter_emit(event_hook_t *event_hook, zend_string *event, zval *param);
+void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook);
+void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook);
+void rp_event_emitter_removeListeners(event_hook_t *event_hook, const char *event, size_t event_len);
+zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event, size_t event_len);
+void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, zval *param);
 
 void rp_event_hook_init(event_hook_t *hook);
 void rp_event_hook_destroy(event_hook_t *hook);
