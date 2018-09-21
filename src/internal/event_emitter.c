@@ -20,7 +20,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
     if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {
         ht_counter = ecalloc(sizeof(ht_counter_t), 1);
         zend_hash_init(&ht_counter->ht, 5, NULL, rp_event_hook_cache_free, 0);
-        zend_hash_add_new_ptr(&event_hook->hook_cache, event, &ht_counter->ht);
+        zend_hash_str_add_new_ptr(&event_hook->hook_cache, event, event_len, &ht_counter->ht);
     }
     else {
         ht_counter = Z_PTR_P(array);
@@ -84,15 +84,19 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
     ht_counter_t *ht_counter;
     fcall_info_t *fci;
 
+    fprintf(stderr, "bbbb\n");
+
     if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {\
         return;
     }
 
+    fprintf(stderr, "ccc\n");
     ht_counter = Z_PTR_P(array);
 
     zend_hash_internal_pointer_reset(&ht_counter->ht);
     while(current = zend_hash_get_current_data(&ht_counter->ht)) {
         fci = Z_PTR_P(current);
+        fprintf(stderr, "aaaaa\n");
         fci_call_function(fci, &retval, 1, arg);
         zend_hash_move_forward(&ht_counter->ht);
     }

@@ -125,7 +125,6 @@ static void accepted_cb(zend_object *server, rp_client_t *client)
     rp_connection_factory(client, &connection);
     ZEND_ASSERT(zval_refcount_p(&connection) == 1);
     rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("connect"), &connection);
-    ZEND_ASSERT(zval_refcount_p(&connection) >= 1);
 }
 
 PHP_METHOD(respond_server_tcp, close)

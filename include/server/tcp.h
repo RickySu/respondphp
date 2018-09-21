@@ -1,6 +1,5 @@
 #ifndef _RP_SERVER_TCP_H
 #define _RP_SERVER_TCP_H
-
 #include "internal/event_emitter.h"
 
 #define UV_TCP_HANDLE_INTERNAL_REF 1
@@ -39,8 +38,8 @@ void setSelfReference(rp_tcp_ext_t *resource);
 
 PHP_METHOD(respond_server_tcp, close);
 PHP_METHOD(respond_server_tcp, __construct);
-TRAIT_PHP_METHOD(respond_server_tcp, event_emitter);
 
+TRAIT_PHP_METHOD(respond_server_tcp, event_emitter);
 TRAIT_FUNCTION_ARG_INFO(respond_server_tcp, event_emitter);
 DECLARE_FUNCTION_ENTRY(respond_server_tcp) =
 {
