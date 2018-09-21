@@ -5,7 +5,7 @@ trait EventEmitterTrait
 {
     protected $listeners = array();
 
-    public function on(string $event, callable $listener):void
+    public function on(string $event, callable $listener)
     {
         if(!isset($this->listeners[$event])){
             $this->listeners[$event] = array();
@@ -13,7 +13,7 @@ trait EventEmitterTrait
         $this->listeners[$event][] = $listener;
     }
 
-    public function off(string $event, callable $listener):void
+    public function off(string $event, callable $listener)
     {
         if(!isset($this->listeners[$event])){
             return;
@@ -28,24 +28,24 @@ trait EventEmitterTrait
         }
     }
 
-    public function removeListeners(string $event):void
+    public function removeListeners(string $event)
     {
         unset($this->listeners[$event]);
     }
 
-    public function getListeners(string $event): array
+    public function getListeners(string $event)
     {
         return $this->listeners[$event]??array();
     }
 
-    public function emit(string $event, ...$arguments):void
+    public function emit(string $event, $argument)
     {
         if(!isset($this->listeners[$event])){
             return;
         }
 
         foreach ($this->listeners[$event] as $listener){
-            $listener(...$arguments);
+            $listener($argument);
         }
     }
 }
