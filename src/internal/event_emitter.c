@@ -3,7 +3,6 @@
 
 void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook)
 {
-    static int n = 0;
     zval new_array, *array;
     fcall_info_t *fci;
     ht_counter_t *ht_counter;
@@ -83,20 +82,14 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
     zval *array, *current, retval;
     ht_counter_t *ht_counter;
     fcall_info_t *fci;
-
-    fprintf(stderr, "bbbb\n");
-
-    if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {\
+    if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {
         return;
     }
-
-    fprintf(stderr, "ccc\n");
     ht_counter = Z_PTR_P(array);
 
     zend_hash_internal_pointer_reset(&ht_counter->ht);
     while(current = zend_hash_get_current_data(&ht_counter->ht)) {
         fci = Z_PTR_P(current);
-        fprintf(stderr, "aaaaa\n");
         fci_call_function(fci, &retval, 1, arg);
         zend_hash_move_forward(&ht_counter->ht);
     }

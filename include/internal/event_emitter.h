@@ -4,7 +4,7 @@
 
 typedef struct {
     HashTable ht;
-    int n;
+    zend_ulong n;
 } ht_counter_t;
 
 typedef struct {

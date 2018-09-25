@@ -63,6 +63,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/server/tcp.c
     src/connection/connection.c
     src/internal/event_emitter.c
+    src/internal/socket_connection.c
     src/interface/event_event_emitter_interface.c
     src/interface/stream_writable_stream_interface.c
     src/interface/stream_readable_stream_interface.c

@@ -16,7 +16,8 @@ typedef union {
 } rp_reactor_handler_u;
 
 typedef union {
-    struct sockaddr socket_addr;
+    struct sockaddr_in sockaddr;
+    struct sockaddr_in6 sockaddr6;
     char *socket_path;
 } rp_reactor_addr_u;
 
@@ -35,10 +36,17 @@ typedef struct rp_reactor_s {
 
 typedef struct rp_client_s{
     union stream_u {
+        uv_stream_t stream;
         uv_pipe_t pipe;
         uv_tcp_t tcp;        
     } stream;
-    zval              *connection;
+    zend_object       *connection_zo;
     rp_reactor_t      *reactor;
 } rp_client_t;
+
+
+typedef struct {
+    uv_write_t uv_write;
+    uv_buf_t buf;
+} rp_write_req_t;
 #endif
