@@ -11,6 +11,8 @@ typedef struct {
     event_hook_t event_hook;
     zend_object  zo;
 } rp_connection_ext_t;
+
+static void connection_shutdown_cb(uv_shutdown_t* req, int status);
 static void connection_write_cb(rp_write_req_t *req, int status);
 static void connection_close_cb(uv_handle_t* handle);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
@@ -18,6 +20,16 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf);
 static zend_object *create_respond_connection_connection_resource(zend_class_entry *class_type);
 static void free_respond_connection_connection_resource(zend_object *object);
 static void releaseResource(rp_connection_ext_t *resource);
+
+static zend_always_inline void connection_close(rp_connection_ext_t *resource)
+{
+    if(resource->flag & RP_CONNECTION_CLOSED){
+        return;
+    }
+
+    resource->flag |= RP_CONNECTION_CLOSED;
+    uv_close((uv_handle_t *) resource->client, connection_close_cb);
+}
 
 PHP_METHOD(respond_connection_connection, __construct);
 PHP_METHOD(respond_connection_connection, isReadable);

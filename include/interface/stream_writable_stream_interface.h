@@ -11,7 +11,7 @@
     ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_stream_writable_stream_interface_end(ce) \
-    ZEND_BEGIN_ARG_INFO(ARGINFO(ce, end), 0) \
+    RP_BEGIN_ARG_INFO(ARGINFO(ce, end), _IS_BOOL, 0) \
         ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 1) \
     ZEND_END_ARG_INFO()
 

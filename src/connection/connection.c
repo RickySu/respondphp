@@ -1,19 +1,29 @@
 #include <zend_types.h>
 #include "respondphp.h"
 #include "connection/connection.h"
+
 static void connection_write_cb(rp_write_req_t *req, int status)
 {
     zval param;
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
     ZVAL_LONG(&param, status);
     rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), &param);
-    efree(req->buf.base);
     efree(req);
+}
+
+static void connection_shutdown_cb(uv_shutdown_t* req, int status)
+{
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->handle)->connection_zo, rp_connection_ext_t);
+    efree(req);
+    connection_close(resource);
 }
 
 static void connection_close_cb(uv_handle_t* handle)
 {
+    zval param;
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
+    ZVAL_NULL(&param);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("close"), &param);
     releaseResource(resource);
 }
 
@@ -200,7 +210,7 @@ PHP_METHOD(respond_connection_connection, close)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    uv_close((uv_handle_t *) resource->client, connection_close_cb);
+    connection_close(resource);
 }
 
 PHP_METHOD(respond_connection_connection, isReadable)
@@ -235,11 +245,9 @@ PHP_METHOD(respond_connection_connection, write)
         return;
     }
 
-    req = emalloc(sizeof(rp_write_req_t));
-    req->buf.base = emalloc(data_len);
-    req->buf.len = data_len;
-    memcpy(req->buf.base, data, data_len);
+    req = rp_make_write_req(data, data_len);
     if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->client->stream, &req->buf, 1, connection_write_cb)){
+        efree(req);
         RETURN_FALSE;
     }
     RETURN_TRUE;
@@ -249,4 +257,27 @@ PHP_METHOD(respond_connection_connection, end)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
+    const char *data = NULL;
+    size_t data_len;
+    rp_write_req_t *write_req;
+    uv_shutdown_t *shutdown_req;
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|s", &data, &data_len)) {
+        return;
+    }
+
+    if(data != NULL) {
+        write_req = rp_make_write_req(data, data_len);
+        if(uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->client->stream, &write_req->buf, 1, connection_write_cb)){
+            efree(write_req);
+            RETURN_FALSE;
+        }
+    }
+
+    shutdown_req = emalloc(sizeof(shutdown_req));
+
+    if(uv_shutdown(shutdown_req, (uv_stream_t *) &resource->client->stream, connection_shutdown_cb)){
+        efree(shutdown_req);
+        RETURN_FALSE;
+    }
+    RETURN_TRUE;
 }

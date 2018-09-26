@@ -1,6 +1,8 @@
 #ifndef _RP_TYPES_H
 #define _RP_TYPES_H
 
+#define RP_CONNECTION_CLOSED 1
+
 struct rp_reactor_s;
 struct rp_client_s;
 
@@ -48,5 +50,17 @@ typedef struct rp_client_s{
 typedef struct {
     uv_write_t uv_write;
     uv_buf_t buf;
+    char data;
 } rp_write_req_t;
+
+static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
+{
+    rp_write_req_t *req;
+    req = emalloc(sizeof(rp_write_req_t) + data_len -1);
+    req->buf.base = &req->data;
+    req->buf.len = data_len;
+    memcpy(req->buf.base, data, data_len);
+    return req;
+}
+
 #endif
