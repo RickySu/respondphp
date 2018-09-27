@@ -3,6 +3,22 @@ dnl THIRDPARTY_BUILD_DIR="$srcdir/thirdparty/build"
 PHP_ADD_INCLUDE("$srcdir/include")
 PHP_ADD_INCLUDE("$srcdir/thirdparty/picohttpparser")
 
+AC_DEFUN([AC_RESPOND_HAVE_PR_SET_PDEATHSIG],
+[
+    AC_MSG_CHECKING([for pcntl PR_SET_PDEATHSIG])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+        #include <sys/prctl.h>
+        #include <signal.h>
+    ]], [[
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+    ]])],[
+        AC_DEFINE(HAVE_PR_SET_PDEATHSIG, 1, [have PR_SET_PDEATHSIG?])
+        AC_MSG_RESULT([yes])
+    ],[
+        AC_MSG_RESULT([no])
+    ])
+])
+
 AC_DEFUN([AC_RESPOND_HAVE_REUSEPORT],
 [
     AC_MSG_CHECKING([for socket REUSEPORT])
@@ -53,7 +69,8 @@ PHP_ARG_WITH(phpconfig-path, for PHP config path ,
 if test "$PHP_RESPONDPHP" != "no"; then
 
   AC_RESPOND_HAVE_REUSEPORT
-      
+  AC_RESPOND_HAVE_PR_SET_PDEATHSIG
+
   modules="   
     thirdparty/picohttpparser/picohttpparser.c
     respondphp.c

@@ -23,16 +23,23 @@ static int makeForks(int n)
 static void signal_chld_handler(uv_signal_t* signal, int signum)
 {
     rp_worker_manager_t *worker_manager = (rp_worker_manager_t *) signal;
-    if(signum == SIGCHLD) {
+    switch(signum) {
+        case SIGCHLD:
+            wait_all_childs();
 
-        wait_all_childs();
+            if(makeForks(RP_WORKER_MAX - rp_worker_count) > 0) {
+                return;
+            }
 
-        if(makeForks(RP_WORKER_MAX - rp_worker_count) > 0) {
-            return;
-        }
-
-        uv_signal_stop(&worker_manager->signal);
-        uv_stop(&worker_manager->loop);
+            uv_signal_stop(&worker_manager->signal);
+            uv_stop(&worker_manager->loop);
+            break;
+        case SIGHUP:
+            fprintf(stderr, "MANAGER HUP %d %d %d\n", SIGHUP, signum, getpid());
+            uv_signal_stop(&worker_manager->signal);
+            exit(0);
+        default:
+            break;
     }
 }
 
@@ -53,6 +60,10 @@ static void rp_do_init_worker_manager()
         uv_loop_init(&worker_manager.loop);
         uv_signal_init(&worker_manager.loop, &worker_manager.signal);
         uv_signal_start(&worker_manager.signal, signal_chld_handler, SIGCHLD);
+#ifdef HAVE_PR_SET_PDEATHSIG
+        uv_signal_start(&worker_manager.signal, signal_chld_handler, SIGHUP);
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+#endif
         uv_run(&worker_manager.loop, UV_RUN_DEFAULT);
         uv_loop_close(&worker_manager.loop);
     }
@@ -90,6 +101,11 @@ int rp_init_worker_manager()
     }
     
     close(fd[1]);
+
+#ifdef HAVE_PR_SET_PDEATHSIG
+    setsid();
+#endif
+
     rp_do_init_worker_manager();
     return fd[0];
 }

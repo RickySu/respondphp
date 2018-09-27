@@ -15,6 +15,7 @@
     #include <jemalloc/jemalloc.h>
 #endif
 
+#include <sys/prctl.h>
 #include <php.h>
 #include <ext/standard/info.h>
 #include <uv.h>

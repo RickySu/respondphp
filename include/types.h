@@ -34,6 +34,7 @@ typedef struct rp_reactor_s {
     zend_object            *server;
     struct rp_reactor_s    *self;
     struct rp_reactor_s    *next;
+    uv_signal_t signal;
 } rp_reactor_t;
 
 typedef struct rp_client_s{

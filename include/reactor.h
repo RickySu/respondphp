@@ -15,6 +15,20 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void close_cb(uv_handle_t *handle);
 static rp_client_t *accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
-rp_reactor_t *rp_reactor_add();
-#endif
+static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 
+rp_reactor_t *rp_reactor_add();
+
+#ifdef HAVE_PR_SET_PDEATHSIG
+extern  uv_signal_t signal_handle;
+static zend_always_inline void rp_register_pdeath_sig(uv_loop_t *loop, int signum)
+{
+    uv_signal_init(loop, &signal_handle);
+    prctl(PR_SET_PDEATHSIG, SIGHUP);
+    fprintf(stderr, "init signal: %d\n", getpid());
+    uv_signal_start(&signal_handle, rp_signal_hup_handler, signum);
+}
+#else
+#define rp_register_pdeath_sig(x, y)
+#endif
+#endif
