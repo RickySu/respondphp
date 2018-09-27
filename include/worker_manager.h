@@ -11,5 +11,5 @@ typedef struct {
 static void rp_do_init_worker_manager();
 static int makeForks(int n);
 static void signal_chld_handler(uv_signal_t* signal, int signum);
-static void wait_all_childs();
+static void wait_all_children();
 #endif

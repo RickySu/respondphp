@@ -25,7 +25,7 @@ static void signal_chld_handler(uv_signal_t* signal, int signum)
     rp_worker_manager_t *worker_manager = (rp_worker_manager_t *) signal;
     switch(signum) {
         case SIGCHLD:
-            wait_all_childs();
+            wait_all_children();
 
             if(makeForks(RP_WORKER_MAX - rp_worker_count) > 0) {
                 return;
@@ -43,7 +43,7 @@ static void signal_chld_handler(uv_signal_t* signal, int signum)
     }
 }
 
-static void wait_all_childs()
+static void wait_all_children()
 {
     int child_pid;
     while((child_pid = waitpid(-1, NULL, WNOHANG)) > 0){
