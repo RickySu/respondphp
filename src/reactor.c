@@ -4,6 +4,7 @@
 static rp_reactor_t *rp_reactor_head = NULL;
 static rp_reactor_t *rp_reactor_tail = NULL;
 static uv_pipe_t ipc_pipe;
+static uv_pipe_t task_pipe;
 
 #ifdef HAVE_PR_SET_PDEATHSIG
 uv_signal_t signal_handle;
@@ -47,6 +48,11 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
 static void rp_init_worker_server()
 {
     int status = uv_read_start((uv_stream_t*) &ipc_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
+}
+
+static void rp_init_task_server()
+{
+    int status = uv_read_start((uv_stream_t*) &task_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
 }
 
 static void close_cb(uv_handle_t* handle){
@@ -98,22 +104,34 @@ static void rp_init_actor_server()
     }
 }
 
-int rp_init_reactor(int fd)
+int rp_init_reactor(int worker_fd, int task_fd)
 {
+    int ret;
     uv_loop_init(&main_loop);
-    uv_pipe_init(&main_loop, &ipc_pipe, 1);
-    int ret = uv_pipe_open(&ipc_pipe, fd);
-
     switch(rp_get_task_type()) {
         case ACTOR:
-            rp_register_pdeath_sig(&main_loop, SIGINT);
+            uv_pipe_init(&main_loop, &ipc_pipe, 1);
+            ret = uv_pipe_open(&ipc_pipe, worker_fd);
+            rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
             rp_init_actor_server();
             break;
         case WORKER:
-            rp_register_pdeath_sig(&main_loop, SIGHUP);
+            fprintf(stderr, "worker: %d\n", getpid());
+            uv_pipe_init(&main_loop, &ipc_pipe, 1);
+            ret = uv_pipe_open(&ipc_pipe, worker_fd);
+            rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             rp_init_worker_server();
             break;            
+        case TASK:
+            fprintf(stderr, "task: %d\n", getpid());
+            uv_pipe_init(&main_loop, &task_pipe, 0);
+            ret = uv_pipe_open(&task_pipe, task_fd);
+            rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
+            rp_init_task_server();
+            break;
         case WORKER_MANAGER:
+            break;
+        case TASK_MANAGER:
             break;
     }
     return ret;

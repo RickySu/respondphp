@@ -3,9 +3,9 @@
 
 #include "respondphp.h"
 #include "worker_manager.h"
+rp_task_type_t rp_task_type = ACTOR;
 
 static uint rp_worker_count = 0;
-static rp_task_type_t rp_task_type = ACTOR;
 
 static int makeForks(int n)
 {
@@ -55,15 +55,13 @@ static void wait_all_children()
 static void rp_do_init_worker_manager()
 {
     rp_worker_manager_t worker_manager;
+    DETTACH_SESSION();
     if(makeForks(RP_WORKER_MAX - rp_worker_count) > 0) { //Worker Manager
         rp_task_type = WORKER_MANAGER;
         uv_loop_init(&worker_manager.loop);
         uv_signal_init(&worker_manager.loop, &worker_manager.signal);
         uv_signal_start(&worker_manager.signal, signal_chld_handler, SIGCHLD);
-#ifdef HAVE_PR_SET_PDEATHSIG
-        uv_signal_start(&worker_manager.signal, signal_chld_handler, SIGHUP);
-        prctl(PR_SET_PDEATHSIG, SIGHUP);
-#endif
+        rp_register_pdeath_sig(&worker_manager.loop, SIGINT, signal_chld_handler);
         uv_run(&worker_manager.loop, UV_RUN_DEFAULT);
         uv_loop_close(&worker_manager.loop);
     }
@@ -85,6 +83,10 @@ int rp_init_worker_manager()
     int fd[2];
     int pid;
 
+    if(rp_get_task_type() != ACTOR){
+        return 0;
+    }
+
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, fd) < 0) {
         return -1;
     }
@@ -101,11 +103,6 @@ int rp_init_worker_manager()
     }
     
     close(fd[1]);
-
-#ifdef HAVE_PR_SET_PDEATHSIG
-    setsid();
-#endif
-
     rp_do_init_worker_manager();
     return fd[0];
 }

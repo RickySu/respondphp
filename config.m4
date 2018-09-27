@@ -76,6 +76,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     respondphp.c
     src/event_loop.c
     src/reactor.c
+    src/task_manager.c
     src/worker_manager.c
     src/server/tcp.c
     src/connection/connection.c

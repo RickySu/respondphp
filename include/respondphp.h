@@ -43,8 +43,9 @@ DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connection_interface);
 
+int rp_init_task_manager();
 int rp_init_worker_manager();
-int rp_init_reactor(int fd);
+int rp_init_reactor(int worker_fd, int task_fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
