@@ -3,8 +3,6 @@
 
 #include "respondphp.h"
 #include "worker_manager.h"
-rp_task_type_t rp_task_type = ACTOR;
-
 static uint rp_worker_count = 0;
 
 static int makeForks(int n)
@@ -57,7 +55,7 @@ static void rp_do_init_worker_manager()
     rp_worker_manager_t worker_manager;
     DETTACH_SESSION();
     if(makeForks(RP_WORKER_MAX - rp_worker_count) > 0) { //Worker Manager
-        rp_task_type = WORKER_MANAGER;
+        rp_set_task_type(WORKER_MANAGER);
         uv_loop_init(&worker_manager.loop);
         uv_signal_init(&worker_manager.loop, &worker_manager.signal);
         uv_signal_start(&worker_manager.signal, signal_chld_handler, SIGCHLD);
@@ -65,17 +63,7 @@ static void rp_do_init_worker_manager()
         uv_run(&worker_manager.loop, UV_RUN_DEFAULT);
         uv_loop_close(&worker_manager.loop);
     }
-    rp_task_type = WORKER;
-}
-
-rp_task_type_t rp_get_task_type()
-{
-    return rp_task_type;
-}
-
-void rp_set_task_type(rp_task_type_t type)
-{
-    rp_task_type = type;
+    rp_set_task_type(WORKER);
 }
 
 int rp_init_worker_manager()

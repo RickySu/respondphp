@@ -56,7 +56,7 @@ static void rp_do_init_task_manager()
     rp_task_manager_t task_manager;
     DETTACH_SESSION();
     if(makeForks(RP_TASK_MAX - rp_task_count) > 0) { //Task Manager
-        rp_task_type = TASK_MANAGER;
+        rp_set_task_type(TASK_MANAGER);
         uv_loop_init(&task_manager.loop);
         uv_signal_init(&task_manager.loop, &task_manager.signal);
         uv_signal_start(&task_manager.signal, signal_chld_handler, SIGCHLD);
@@ -67,7 +67,7 @@ static void rp_do_init_task_manager()
         uv_run(&task_manager.loop, UV_RUN_DEFAULT);
         uv_loop_close(&task_manager.loop);
     }
-    rp_task_type = TASK;
+    rp_set_task_type(TASK);
 }
 
 int rp_init_task_manager()

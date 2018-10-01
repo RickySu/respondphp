@@ -33,8 +33,8 @@ static void accepted_cb(zend_object *server, rp_client_t *client);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void releaseResource(rp_tcp_ext_t *resource);
 static void tcp_close_cb(uv_handle_t* handle);
-void tcp_close_socket(rp_tcp_ext_t *handle);
-void setSelfReference(rp_tcp_ext_t *resource);
+static void tcp_close_socket(rp_tcp_ext_t *handle);
+static void setSelfReference(rp_tcp_ext_t *resource);
 
 PHP_METHOD(respond_server_tcp, close);
 PHP_METHOD(respond_server_tcp, __construct);

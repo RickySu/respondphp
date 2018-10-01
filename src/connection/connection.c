@@ -33,6 +33,7 @@ static void releaseResource(rp_connection_ext_t *resource)
     rp_event_hook_destroy(&resource->event_hook);
     ZVAL_OBJ(&tmp, &resource->zo);
     zval_ptr_dtor(&tmp);
+    free(resource->client);
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)

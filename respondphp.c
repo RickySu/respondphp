@@ -1,6 +1,11 @@
 #include "respondphp.h"
 #include "version.h"
+
 uv_loop_t main_loop;
+uv_pipe_t ipc_pipe;
+uv_pipe_t task_pipe;
+
+static rp_task_type_t rp_task_type = ACTOR;
 
 static void implements_interfaces()
 {
@@ -37,6 +42,7 @@ PHP_MINIT_FUNCTION(respondphp)
     implements_interfaces();
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
+    CLASS_ENTRY_FUNCTION_C(respond_server_task);
     CLASS_ENTRY_FUNCTION_C(respond_connection_connection);
     return SUCCESS;
 }
@@ -66,4 +72,14 @@ PHP_MINFO_FUNCTION(respondphp)
     php_info_print_table_row(2, "respond php version", RESPOND_VERSION_STRING);
     php_info_print_table_row(2, "libuv version", version_str);
     php_info_print_table_end();
+}
+
+rp_task_type_t rp_get_task_type()
+{
+    return rp_task_type;
+}
+
+void rp_set_task_type(rp_task_type_t type)
+{
+    rp_task_type = type;
 }

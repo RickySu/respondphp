@@ -3,7 +3,7 @@
 
 #include "reactor.h"
 
-#define RP_TASK_MAX 10
+#define RP_TASK_MAX 3
 
 extern rp_task_type_t rp_task_type;
 

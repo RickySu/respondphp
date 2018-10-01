@@ -6,7 +6,7 @@ static void client_accept_close_cb(uv_handle_t* handle)
     free(handle);
 }
 
-void tcp_close_socket(rp_tcp_ext_t *handle)
+static void tcp_close_socket(rp_tcp_ext_t *handle)
 {
     if(handle->flag & UV_TCP_CLOSING_START) {
          return;
@@ -15,7 +15,7 @@ void tcp_close_socket(rp_tcp_ext_t *handle)
     uv_close((uv_handle_t *) handle, tcp_close_cb);
 }
 
-void setSelfReference(rp_tcp_ext_t *resource)
+static void setSelfReference(rp_tcp_ext_t *resource)
 {
     if(resource->flag & UV_TCP_HANDLE_INTERNAL_REF) {
         return;
@@ -100,7 +100,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     }
     
     if(host_len == 0 || host_len >= 30) {
-        RETURN_LONG(-1);
+        return;
     }
 
     memcpy(cstr_host, host, host_len);
@@ -110,12 +110,12 @@ PHP_METHOD(respond_server_tcp, __construct)
 
     if(strchr(cstr_host, ':') == NULL) {
         if ((ret = uv_ip4_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
-            RETURN_LONG(ret);
+            return;
         }
     }
     else {
         if ((ret = uv_ip6_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
-            RETURN_LONG(ret);
+            return;
         }
     }
 
@@ -123,7 +123,6 @@ PHP_METHOD(respond_server_tcp, __construct)
     reactor->connection_cb = connection_cb;
     reactor->accepted_cb = accepted_cb;
     reactor->server = &resource->zo;
-    RETURN_LONG(ret);
 }
 
 static void accepted_cb(zend_object *server, rp_client_t *client)
