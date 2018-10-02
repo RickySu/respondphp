@@ -6,8 +6,8 @@
 struct rp_reactor_s;
 struct rp_client_s;
 
-typedef enum {ACTOR, WORKER_MANAGER, WORKER, TASK_MANAGER, TASK} rp_task_type_t;
-typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_TASK} rp_reactor_type_t;
+typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_type_t;
+typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
 
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_client_s *client, char *ipc_data, size_t ipc_data_len);
 

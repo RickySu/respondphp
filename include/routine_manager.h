@@ -1,18 +1,16 @@
-#ifndef _RP_TASK_MANAGER_H
-#define _RP_TASK_MANAGER_H
+#ifndef _RP_ROUTINE_MANAGER_H
+#define _RP_ROUTINE_MANAGER_H
 
 #include "reactor.h"
 
-#define RP_TASK_MAX 3
-
-extern rp_task_type_t rp_task_type;
+#define RP_ROUTINE_MAX 3
 
 typedef struct {
     uv_signal_t signal;
     uv_loop_t loop;
-} rp_task_manager_t;
+} rp_routine_manager_t;
 
-static void rp_do_init_task_manager();
+static void rp_do_init_routine_manager();
 static int makeForks(int n);
 static void signal_chld_handler(uv_signal_t* signal, int signum);
 static void wait_all_children();

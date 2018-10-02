@@ -3,8 +3,7 @@
 
 uv_loop_t main_loop;
 uv_pipe_t ipc_pipe;
-uv_pipe_t task_pipe;
-
+uv_pipe_t routine_pipe;
 static rp_task_type_t rp_task_type = ACTOR;
 
 static void implements_interfaces()
@@ -42,7 +41,7 @@ PHP_MINIT_FUNCTION(respondphp)
     implements_interfaces();
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
-    CLASS_ENTRY_FUNCTION_C(respond_server_task);
+    CLASS_ENTRY_FUNCTION_C(respond_server_routine);
     CLASS_ENTRY_FUNCTION_C(respond_connection_connection);
     return SUCCESS;
 }

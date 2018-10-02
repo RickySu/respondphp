@@ -2,9 +2,9 @@
 #include <sys/wait.h>
 
 #include "respondphp.h"
-#include "task_manager.h"
+#include "routine_manager.h"
 
-static uint rp_task_count = 0;
+static uint rp_routine_count = 0;
 
 static int makeForks(int n)
 {
@@ -14,28 +14,28 @@ static int makeForks(int n)
         if(pid <= 0) {
             break;
         }
-        rp_task_count++;
+        rp_routine_count++;
     }
     return pid;
 }
 
 static void signal_chld_handler(uv_signal_t* signal, int signum)
 {
-    rp_task_manager_t *task_manager = (rp_task_manager_t *) signal;
+    rp_routine_manager_t *routine_manager = (rp_routine_manager_t *) signal;
     switch(signum) {
         case SIGCHLD:
             wait_all_children();
 
-            if(makeForks(RP_TASK_MAX - rp_task_count) > 0) {
+            if(makeForks(RP_ROUTINE_MAX - rp_routine_count) > 0) {
                 return;
             }
 
-            uv_signal_stop(&task_manager->signal);
-            uv_stop(&task_manager->loop);
+            uv_signal_stop(&routine_manager->signal);
+            uv_stop(&routine_manager->loop);
             break;
         case SIGHUP:
             fprintf(stderr, "MANAGER HUP %d %d %d\n", SIGHUP, signum, getpid());
-            uv_signal_stop(&task_manager->signal);
+            uv_signal_stop(&routine_manager->signal);
             exit(0);
         default:
             break;
@@ -46,31 +46,31 @@ static void wait_all_children()
 {
     int child_pid;
     while((child_pid = waitpid(-1, NULL, WNOHANG)) > 0){
-        rp_task_count--;
-        printf("task dead: %d %d\n", child_pid, rp_task_count);
+        rp_routine_count--;
+        printf("routine dead: %d %d\n", child_pid, rp_routine_count);
     }
 }
 
-static void rp_do_init_task_manager()
+static void rp_do_init_routine_manager()
 {
-    rp_task_manager_t task_manager;
+    rp_routine_manager_t routine_manager;
     DETTACH_SESSION();
-    if(makeForks(RP_TASK_MAX - rp_task_count) > 0) { //Task Manager
-        rp_set_task_type(TASK_MANAGER);
-        uv_loop_init(&task_manager.loop);
-        uv_signal_init(&task_manager.loop, &task_manager.signal);
-        uv_signal_start(&task_manager.signal, signal_chld_handler, SIGCHLD);
+    if(makeForks(RP_ROUTINE_MAX - rp_routine_count) > 0) { //Routine Manager
+        rp_set_task_type(ROUTINE_MANAGER);
+        uv_loop_init(&routine_manager.loop);
+        uv_signal_init(&routine_manager.loop, &routine_manager.signal);
+        uv_signal_start(&routine_manager.signal, signal_chld_handler, SIGCHLD);
 #ifdef HAVE_PR_SET_PDEATHSIG
-        uv_signal_start(&task_manager.signal, signal_chld_handler, SIGHUP);
+        uv_signal_start(&routine_manager.signal, signal_chld_handler, SIGHUP);
         prctl(PR_SET_PDEATHSIG, SIGHUP);
 #endif
-        uv_run(&task_manager.loop, UV_RUN_DEFAULT);
-        uv_loop_close(&task_manager.loop);
+        uv_run(&routine_manager.loop, UV_RUN_DEFAULT);
+        uv_loop_close(&routine_manager.loop);
     }
-    rp_set_task_type(TASK);
+    rp_set_task_type(ROUTINE);
 }
 
-int rp_init_task_manager()
+int rp_init_routine_manager()
 {
     int fd[2];
     int pid;
@@ -95,6 +95,6 @@ int rp_init_task_manager()
     }
 
     close(fd[1]);
-    rp_do_init_task_manager();
+    rp_do_init_routine_manager();
     return fd[0];
 }

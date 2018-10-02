@@ -17,7 +17,7 @@ static rp_client_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
             uv_tcp_init(&main_loop, (uv_tcp_t *) client);
             break;
         case RP_PIPE:
-        case RP_TASK:
+        case RP_ROUTINE:
             uv_pipe_init(&main_loop, (uv_pipe_t *) client, 0);
             break;
         default:
@@ -59,19 +59,19 @@ static int rp_init_worker_server(int fd)
     return uv_read_start((uv_stream_t*) &ipc_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
 }
 
-static int rp_init_task_server(int fd)
+static int rp_init_routine_server(int fd)
 {
     int ret;
 
-    if(ret = uv_pipe_init(&main_loop, &task_pipe, 1)){
+    if(ret = uv_pipe_init(&main_loop, &routine_pipe, 1)){
         return ret;
     }
 
-    if(ret = uv_pipe_open(&task_pipe, fd)){
+    if(ret = uv_pipe_open(&routine_pipe, fd)){
         return ret;
     }
 
-    return uv_read_start((uv_stream_t*) &task_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
+    return uv_read_start((uv_stream_t*) &routine_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
 }
 
 static void close_cb(uv_handle_t* handle){
@@ -135,7 +135,7 @@ static void rp_init_actor_server()
     }
 }
 
-int rp_init_reactor(int worker_fd, int task_fd)
+int rp_init_reactor(int worker_fd, int routine_fd)
 {
     int ret = 0;
     uv_loop_init(&main_loop);
@@ -151,17 +151,17 @@ int rp_init_reactor(int worker_fd, int task_fd)
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             ret = rp_init_worker_server(worker_fd);
 
-            uv_pipe_init(&main_loop, &task_pipe, 1);
-            uv_pipe_open(&task_pipe, task_fd);
+            uv_pipe_init(&main_loop, &routine_pipe, 1);
+            uv_pipe_open(&routine_pipe, routine_fd);
             break;            
-        case TASK:
-            fprintf(stderr, "task: %d\n", getpid());
+        case ROUTINE:
+            fprintf(stderr, "routine: %d\n", getpid());
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
-            ret = rp_init_task_server(task_fd);
+            ret = rp_init_routine_server(routine_fd);
             break;
         case WORKER_MANAGER:
             break;
-        case TASK_MANAGER:
+        case ROUTINE_MANAGER:
             break;
     }
     return ret;

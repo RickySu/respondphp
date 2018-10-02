@@ -34,7 +34,7 @@ static void free_respond_event_loop_resource(zend_object *object)
 
 PHP_METHOD(respond_event_loop, run)
 {
-    int worker_fd, task_fd;
+    int worker_fd, routine_fd;
     long option = RUN_DEFAULT;
     uv_run_mode mode;
     zval *self = getThis();
@@ -57,14 +57,14 @@ PHP_METHOD(respond_event_loop, run)
             mode = UV_RUN_DEFAULT;        
     }
 
-    task_fd = rp_init_task_manager();
+    routine_fd = rp_init_routine_manager();
     worker_fd = rp_init_worker_manager();
 
-    if(worker_fd < 0 || task_fd < 0) {
+    if(worker_fd < 0 || routine_fd < 0) {
         return;
     }
 
-    int ret = rp_init_reactor(worker_fd, task_fd);
+    int ret = rp_init_reactor(worker_fd, routine_fd);
     fprintf(stderr, "init pipe: %d\n", ret);
     uv_run(&main_loop, mode);
     fprintf(stderr, "loop end %d\n", getpid());

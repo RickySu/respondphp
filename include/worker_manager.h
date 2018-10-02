@@ -5,8 +5,6 @@
 
 #define RP_WORKER_MAX 3
 
-extern rp_task_type_t rp_task_type;
-
 typedef struct {
     uv_signal_t signal;
     uv_loop_t loop;
