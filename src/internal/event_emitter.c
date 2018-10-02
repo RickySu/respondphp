@@ -17,7 +17,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
     add_next_index_zval(array, hook);
 
     if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {
-        ht_counter = ecalloc(sizeof(ht_counter_t), 1);
+        ht_counter = rp_calloc(1, sizeof(ht_counter_t));
         zend_hash_init(&ht_counter->ht, 5, NULL, rp_event_hook_cache_free, 0);
         zend_hash_str_add_new_ptr(&event_hook->hook_cache, event, event_len, &ht_counter->ht);
     }
@@ -25,7 +25,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
         ht_counter = Z_PTR_P(array);
     }
 
-    fci = emalloc(sizeof(fcall_info_t));
+    fci =rp_malloc(sizeof(fcall_info_t));
     zend_fcall_info_init(hook, 0, &fci->fci, &fci->fcc, NULL, NULL);
 
     zend_hash_index_add_ptr(&ht_counter->ht, ht_counter->n++, fci);
@@ -97,14 +97,14 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
 
 static void rp_event_hook_cache_free(zval *hook)
 {
-    efree(Z_PTR_P(hook));
+    rp_free(Z_PTR_P(hook));
 }
 
 static void rp_event_hook_cache_list_free(zval *hook)
 {
     HashTable *ht = Z_PTR_P(hook);
     zend_hash_destroy(ht);
-    efree(ht);
+    rp_free(ht);
 }
 
 void rp_event_hook_init(event_hook_t *hook)

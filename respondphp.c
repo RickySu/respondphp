@@ -59,6 +59,13 @@ PHP_RINIT_FUNCTION(respondphp)
 
 PHP_RSHUTDOWN_FUNCTION(respondphp)
 {
+    rp_reactor_t *reactor = rp_reactor_get_head();
+    rp_reactor_t *tmp_reactor;
+    while(reactor) {
+        tmp_reactor = reactor;
+        reactor = reactor->next;
+        rp_free(tmp_reactor);
+    }
     return SUCCESS;
 }
 

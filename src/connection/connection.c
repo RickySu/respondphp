@@ -8,13 +8,13 @@ static void connection_write_cb(rp_write_req_t *req, int status)
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
     ZVAL_LONG(&param, status);
     rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), &param);
-    efree(req);
+    rp_free(req);
 }
 
 static void connection_shutdown_cb(uv_shutdown_t* req, int status)
 {
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->handle)->connection_zo, rp_connection_ext_t);
-    efree(req);
+    rp_free(req);
     connection_close(resource);
 }
 
@@ -33,12 +33,12 @@ static void releaseResource(rp_connection_ext_t *resource)
     rp_event_hook_destroy(&resource->event_hook);
     ZVAL_OBJ(&tmp, &resource->zo);
     zval_ptr_dtor(&tmp);
-    free(resource->client);
+    rp_free(resource->client);
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
-    buf->base = (char*) malloc(suggested_size);
+    buf->base = (char*) rp_malloc(suggested_size);
     buf->len = suggested_size;
 }
 
@@ -57,7 +57,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
         rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), &param);
     }
 
-    free(buf->base);
+    rp_free(buf->base);
 }
 
 void rp_connection_factory(rp_client_t *client, zval *connection)
@@ -248,7 +248,7 @@ PHP_METHOD(respond_connection_connection, write)
 
     req = rp_make_write_req(data, data_len);
     if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->client->stream, &req->buf, 1, connection_write_cb)){
-        efree(req);
+        rp_free(req);
         RETURN_FALSE;
     }
     RETURN_TRUE;
@@ -269,15 +269,15 @@ PHP_METHOD(respond_connection_connection, end)
     if(data != NULL) {
         write_req = rp_make_write_req(data, data_len);
         if(uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->client->stream, &write_req->buf, 1, connection_write_cb)){
-            efree(write_req);
+            rp_free(write_req);
             RETURN_FALSE;
         }
     }
 
-    shutdown_req = emalloc(sizeof(shutdown_req));
+    shutdown_req = rp_malloc(sizeof(shutdown_req));
 
     if(uv_shutdown(shutdown_req, (uv_stream_t *) &resource->client->stream, connection_shutdown_cb)){
-        efree(shutdown_req);
+        rp_free(shutdown_req);
         RETURN_FALSE;
     }
     RETURN_TRUE;

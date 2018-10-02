@@ -13,6 +13,15 @@
 
 #ifdef HAVE_JEMALLOC
     #include <jemalloc/jemalloc.h>
+    #define rp_malloc malloc
+    #define rp_calloc calloc
+    #define rp_realloc realloc
+    #define rp_free free
+#else
+    #define rp_malloc emalloc
+    #define rp_calloc ecalloc
+    #define rp_realloc erealloc
+    #define rp_free efree
 #endif
 
 #include <sys/prctl.h>
@@ -52,6 +61,7 @@ int rp_init_reactor(int worker_fd, int routine_fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
+rp_reactor_t *rp_reactor_get_head();
 void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_send(reactor, client, close_cb) \
 do{\

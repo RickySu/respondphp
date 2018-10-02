@@ -3,7 +3,7 @@
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
-    free(handle);
+    rp_free(handle);
 }
 
 static void tcp_close_socket(rp_tcp_ext_t *handle)
@@ -51,7 +51,7 @@ static void connection_cb(rp_reactor_t *reactor, int status)
         return;
     }
 
-    uv_tcp_t *client = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
+    uv_tcp_t *client = (uv_tcp_t*) rp_malloc(sizeof(uv_tcp_t));
     uv_tcp_init(&main_loop, client);
     
     if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {

@@ -29,7 +29,7 @@ static void free_respond_event_loop_resource(zend_object *object)
     rp_event_loop_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_event_loop_ext_t);
     zend_object_std_dtor(&resource->zo);
-    efree(resource);
+    rp_free(resource);
 }
 
 PHP_METHOD(respond_event_loop, run)

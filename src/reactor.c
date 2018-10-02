@@ -10,7 +10,7 @@ uv_signal_t signal_handle;
 
 static rp_client_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
-    rp_client_t *client = (rp_client_t*) malloc(sizeof(rp_client_t));
+    rp_client_t *client = (rp_client_t*) rp_malloc(sizeof(rp_client_t));
 
     switch(reactor->type){
         case RP_TCP:
@@ -29,18 +29,18 @@ static rp_client_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
     }
 
     uv_close((uv_handle_t*) client, close_cb);
-    free(client);
+    rp_free(client);
     return NULL;
 }
 
-static rp_reactor_t *rp_reactor_get_head()
+rp_reactor_t *rp_reactor_get_head()
 {
     return rp_reactor_head;
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
-    buf->base = (char*) malloc(suggested_size);
+    buf->base = (char*) rp_malloc(suggested_size);
     buf->len = suggested_size;
 }
 
@@ -74,8 +74,9 @@ static int rp_init_routine_server(int fd)
     return uv_read_start((uv_stream_t*) &routine_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
 }
 
-static void close_cb(uv_handle_t* handle){
-    free(handle);
+static void close_cb(uv_handle_t* handle)
+{
+    rp_free(handle);
 }
 
 static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
@@ -87,7 +88,7 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 
     if (!uv_pipe_pending_count(pipe)) {
         fprintf(stderr, "(%d) No pending count %p\n", getpid(), buf->base);
-        free(buf->base);
+        rp_free(buf->base);
         return;
     }
     rp_reactor_t *reactor = reactor_ext->reactor;
@@ -106,13 +107,13 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
         reactor_ext->reactor->accepted_cb(reactor_ext->reactor->server, client, reactor_ext->data, reactor_ext->data_len);
     }
 
-    free(buf->base);
+    rp_free(buf->base);
 }
 
 static void write2_cb(reactor_send_req_t *req, int status)
 {
     uv_close(req->client, req->close_cb);
-    free(req);
+    rp_free(req);
 }
 
 static void rp_init_actor_server()
@@ -169,7 +170,7 @@ int rp_init_reactor(int worker_fd, int routine_fd)
 
 rp_reactor_t *rp_reactor_add()
 {
-    rp_reactor_t *reactor = calloc(1, sizeof(rp_reactor_t));
+    rp_reactor_t *reactor = rp_calloc(1, sizeof(rp_reactor_t));
     reactor->self = reactor;
     reactor->dummy_buf = uv_buf_init((char *) &reactor->self, sizeof(reactor));
     fprintf(stderr, "ss: %x %x\n", reactor, (void*) reactor->dummy_buf.base);
@@ -186,7 +187,7 @@ rp_reactor_t *rp_reactor_add()
 
 void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb, char *data, size_t data_len, uv_stream_t *ipc)
 {
-    reactor_send_req_t *send_req = malloc(sizeof(reactor_send_req_t) + data_len - 1);
+    reactor_send_req_t *send_req = rp_malloc(sizeof(reactor_send_req_t) + data_len - 1);
     send_req->close_cb = close_cb;
     send_req->client = client;
     send_req->reactor_ext.reactor = reactor;
