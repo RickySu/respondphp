@@ -46,6 +46,8 @@ static void routine_execution_free(zval *hook);
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args);
 static void routine_close_cb(uv_handle_t* handle);
 static void setSelfReference(rp_routine_ext_t *resource);
+static void rp_serialize(zval *param, zval *serialized);
+static void rp_unserialize(zval *param, char *serialized, size_t serialized_len);
 
 PHP_METHOD(respond_server_routine, __construct);
 PHP_METHOD(respond_server_routine, execute);

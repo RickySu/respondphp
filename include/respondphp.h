@@ -62,6 +62,7 @@ rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
 rp_reactor_t *rp_reactor_get_head();
+void rp_reactor_destroy();
 void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_send(reactor, client, close_cb) \
 do{\

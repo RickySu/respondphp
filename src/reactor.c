@@ -99,8 +99,6 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
         fprintf(stderr, "recv actor data: %.*s\n", reactor_ext->data_len, reactor_ext->data);
     }
 
-    RP_ASSERT(reactor_ext->reactor->self == reactor_ext->reactor);
-
     fprintf(stderr, "recv accepted_cb: %p\n", reactor_ext->reactor->accepted_cb);
 
     if(client = rp_accept_client(pipe, reactor_ext->reactor)) {
@@ -151,7 +149,6 @@ int rp_init_reactor(int worker_fd, int routine_fd)
             fprintf(stderr, "worker: %d\n", getpid());
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             ret = rp_init_worker_server(worker_fd);
-
             uv_pipe_init(&main_loop, &routine_pipe, 1);
             uv_pipe_open(&routine_pipe, routine_fd);
             break;            
@@ -168,13 +165,22 @@ int rp_init_reactor(int worker_fd, int routine_fd)
     return ret;
 }
 
+void rp_reactor_destroy()
+{
+    rp_reactor_t *reactor = rp_reactor_get_head();
+    rp_reactor_t *tmp_reactor;
+    while(reactor) {
+        tmp_reactor = reactor;
+        reactor = reactor->next;
+        rp_free(tmp_reactor);
+    }
+}
+
 rp_reactor_t *rp_reactor_add()
 {
     rp_reactor_t *reactor = rp_calloc(1, sizeof(rp_reactor_t));
-    reactor->self = reactor;
-    reactor->dummy_buf = uv_buf_init((char *) &reactor->self, sizeof(reactor));
-    fprintf(stderr, "ss: %x %x\n", reactor, (void*) reactor->dummy_buf.base);
-    if(rp_reactor_head == NULL){
+
+    if(rp_reactor_head == NULL) {
         rp_reactor_head = rp_reactor_tail = reactor;
         return reactor;
     }

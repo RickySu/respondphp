@@ -54,10 +54,14 @@ static void routine_result_close_cb(routine_execution_t *routine_execution)
 
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf)
 {
+    zval result;
     fprintf(stderr, "read result: %p\n", routine_execution);
     rp_routine_ext_t *resource = routine_execution->resource;
     if(status > 0){
         fprintf(stderr, "read %.*s\n", status, buf->base);
+        rp_unserialize(&result, buf->base, status);
+        zend_print_zval_r(&result, 0);
+        ZVAL_PTR_DTOR(&result);
     }
     rp_free(buf->base);
     uv_close(&routine_execution->pipe, (uv_close_cb) routine_result_close_cb);
@@ -66,15 +70,23 @@ static void routine_result_read_cb(routine_execution_t *routine_execution, int s
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args)
 {
     int fd[2];
+    char *msg = NULL;
+    size_t msg_len = 0;
     uv_pipe_t *pipe;
     routine_execution_t *routine_execution;
-    const char *msg = "123456";
     fprintf(stderr, "execute:\n");
     socketpair(AF_UNIX, SOCK_STREAM, 0, fd);
     pipe = rp_malloc(sizeof(uv_pipe_t));
     uv_pipe_init(&main_loop, pipe, 0);
     uv_pipe_open(pipe, fd[0]);
-    rp_reactor_send_ex(resource->reactor, pipe, client_accept_close_cb, msg, strlen(msg), &routine_pipe);
+
+    if(args){
+        RP_ASSERT(Z_TYPE_P(args) == IS_STRING);
+        msg = Z_STRVAL_P(args);
+        msg_len = Z_STRLEN_P(args);
+    }
+
+    rp_reactor_send_ex(resource->reactor, pipe, client_accept_close_cb, msg, msg_len, &routine_pipe);
     routine_execution = rp_malloc(sizeof(routine_execution_t));
     routine_execution->resource = resource;
     uv_pipe_init(&main_loop, &routine_execution->pipe, 0);
@@ -132,6 +144,7 @@ PHP_METHOD(respond_server_routine, execute)
 {
     zval *self = getThis();
     zval *args = NULL;
+    zval serialized;
     rp_routine_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_routine_ext_t);
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|z", &args)) {
@@ -139,7 +152,10 @@ PHP_METHOD(respond_server_routine, execute)
     }
 
     if(args){
-        zend_print_zval_r(args, 0);
+        rp_serialize(&serialized, args);
+        routine_execution_add(resource, &serialized);
+        zval_ptr_dtor(&serialized);
+        return;
     }
 
     routine_execution_add(resource, args);
@@ -152,7 +168,7 @@ static void close_cb(rp_client_t *client)
 
 static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data, size_t ipc_data_len)
 {
-    zval param, retval;
+    zval param, retval, serialized;
     rp_write_req_t *req;
     rp_routine_ext_t *resource = FETCH_RESOURCE(server, rp_routine_ext_t);
     fprintf(stderr, "routine socket send %.*s\n", ipc_data_len, ipc_data);
@@ -162,14 +178,24 @@ static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data
         zend_fcall_info_init(&resource->execution, 0, FCI_PARSE_PARAMETERS_CC(resource->execution_fci), NULL, NULL);
     }
 
-    ZVAL_STRINGL(&param, ipc_data, ipc_data_len);
+    ZVAL_NULL(&param);
+
+    if(ipc_data_len) {
+        rp_unserialize(&param, ipc_data, ipc_data_len);
+    }
+
     int ret = fci_call_function(&resource->execution_fci, &retval, 1, &param);
     fprintf(stderr, "result: %p %d %d\n", client, getpid(), ret);
-    ZVAL_PTR_DTOR(&param);
     fprintf(stderr, "routine socket end %.*s\n", ipc_data_len, ipc_data);
+    rp_serialize(&serialized, &retval);
 
-    req = rp_make_write_req(ZEND_STRL("debug123"));
+    RP_ASSERT(Z_TYPE(serialized) == IS_STRING);
+
+    req = rp_make_write_req(Z_STRVAL(serialized), Z_STRLEN(serialized));
     uv_write(req, (uv_stream_t *) client, &req->buf, 1, routine_result_write_cb);
+    ZVAL_PTR_DTOR(&param);
+    ZVAL_PTR_DTOR(&retval);
+    ZVAL_PTR_DTOR(&serialized);
 }
 
 static void routine_result_write_cb(rp_write_req_t *req, int status)
@@ -177,4 +203,27 @@ static void routine_result_write_cb(rp_write_req_t *req, int status)
     fprintf(stderr, "result write end: %p\n", req->uv_write.handle);
     uv_close((uv_handle_t *) req->uv_write.handle, (uv_close_cb) close_cb);
     rp_free(req);
+}
+
+static void rp_serialize(zval *serialized, zval *param)
+{
+    fcall_info_t fci;
+    zval fn;
+    ZVAL_STRING(&fn, "serialize");
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
+    ZVAL_PTR_DTOR(&fn);
+    fci_call_function(&fci, serialized, 1, param);
+}
+
+
+static void rp_unserialize(zval *retval, char *serialized, size_t serialized_len)
+{
+    fcall_info_t fci;
+    zval fn, param;
+    ZVAL_STRING(&fn, "unserialize");
+    ZVAL_STRINGL(&param, serialized, serialized_len);
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
+    fci_call_function(&fci, retval, 1, &param);
+    ZVAL_PTR_DTOR(&fn);
+    ZVAL_PTR_DTOR(&param);
 }

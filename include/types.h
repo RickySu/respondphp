@@ -15,26 +15,23 @@ typedef union {
     uv_tcp_t  tcp;
     uv_pipe_t pipe;
     uv_udp_t  udp;
-} rp_reactor_handler_u;
+} rp_reactor_handler_t;
 
 typedef union {
     struct sockaddr_in sockaddr;
     struct sockaddr_in6 sockaddr6;
     char *socket_path;
-} rp_reactor_addr_u;
+} rp_reactor_addr_t;
 
 
 typedef struct rp_reactor_s {
-    rp_reactor_handler_u   handler;
+    rp_reactor_handler_t   handler;
     rp_reactor_type_t      type;
-    rp_reactor_addr_u      addr;
-    uv_buf_t               dummy_buf;
+    rp_reactor_addr_t      addr;
     uv_connection_cb       connection_cb;
     rp_accepted_cb         accepted_cb;
     zend_object            *server;
-    struct rp_reactor_s    *self;
     struct rp_reactor_s    *next;
-    uv_signal_t signal;
 } rp_reactor_t;
 
 typedef struct {
@@ -50,7 +47,6 @@ typedef struct rp_client_s{
         uv_tcp_t tcp;        
     } stream;
     zend_object       *connection_zo;
-    rp_reactor_t      *reactor;
 } rp_client_t;
 
 typedef struct {
