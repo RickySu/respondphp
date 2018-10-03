@@ -5,7 +5,7 @@ ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_routine, __construct), 0)
     ZEND_ARG_CALLABLE_INFO(0, execution, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_routine, execute), 0)
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_server_routine, execute), PREDEFINED_PHP_Respond_Async_PromiseInterface, 0)
     ZEND_ARG_INFO(0, args)
 ZEND_END_ARG_INFO()
 

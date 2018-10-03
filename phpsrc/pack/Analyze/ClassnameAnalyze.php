@@ -48,15 +48,19 @@ class ClassnameAnalyze
         $moustacheCount = 1;
         while($feed->valid()) {
             $token = $feed->current();
-            $feed->next();
 
             if($moustacheCount == 0){
                 break;
             }
 
+            $feed->next();
+
             if(!is_array($token)){
                 if($token == '}'){
                     $moustacheCount--;
+                }
+                if($token == '{'){
+                    $moustacheCount++;
                 }
                 $content .= $token;
                 continue;

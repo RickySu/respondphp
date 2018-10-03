@@ -113,8 +113,10 @@ PHP_METHOD(ce, method_name) \
 }
 
 #if PHP_VERSION_ID >= 70200
-    #define RP_BEGIN_ARG_INFO(name, type, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO()
+    #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO
+    #define RP_BEGIN_ARG_INFO(name, type, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, type, allow_null)
 #else
+    #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(name, class_name, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, IS_OBJECT, class_name, allow_null)
     #define RP_BEGIN_ARG_INFO(name, type, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, type, NULL, allow_null)
 #endif
 
