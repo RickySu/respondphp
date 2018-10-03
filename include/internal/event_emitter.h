@@ -17,8 +17,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
 void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook);
 void rp_event_emitter_removeListeners(event_hook_t *event_hook, const char *event, size_t event_len);
 zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event, size_t event_len);
-void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, zval *param);
-
+void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);
 void rp_event_hook_init(event_hook_t *hook);
 void rp_event_hook_destroy(event_hook_t *hook);
 static void rp_event_hook_cache_list_free(zval *hook);

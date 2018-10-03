@@ -70,4 +70,7 @@ do{\
 } while(0)
 
 void rp_connection_factory(rp_client_t *client, zval *connection);
+void rp_make_promise_object(zval *promise);
+void rp_resolve_promise(zval *promise, zval *result);
+
 #endif

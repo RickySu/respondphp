@@ -77,7 +77,7 @@ zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event,
     return zend_hash_str_find(Z_ARRVAL_P(&event_hook->hook), event, event_len);
 }
 
-void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, zval *arg)
+void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param)
 {
     zval *array, *current, retval;
     ht_counter_t *ht_counter;
@@ -90,7 +90,7 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
     zend_hash_internal_pointer_reset(&ht_counter->ht);
     while(current = zend_hash_get_current_data(&ht_counter->ht)) {
         fci = Z_PTR_P(current);
-        fci_call_function(fci, &retval, 1, arg);
+        fci_call_function(fci, &retval, n_param, param);
         zend_hash_move_forward(&ht_counter->ht);
     }
 }

@@ -7,7 +7,7 @@ static void connection_write_cb(rp_write_req_t *req, int status)
     zval param;
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
     ZVAL_LONG(&param, status);
-    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), &param);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), 1, &param);
     rp_free(req);
 }
 
@@ -23,7 +23,7 @@ static void connection_close_cb(uv_handle_t* handle)
     zval param;
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
     ZVAL_NULL(&param);
-    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("close"), &param);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("close"), 1, &param);
     releaseResource(resource);
 }
 
@@ -49,12 +49,12 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 
     if(nread > 0){
         ZVAL_STRINGL(&param, buf->base, nread);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), &param);
+        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 1, &param);
         ZVAL_PTR_DTOR(&param);
     }
     else{
         ZVAL_LONG(&param, nread);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), &param);
+        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), 1, &param);
     }
 
     rp_free(buf->base);
@@ -169,16 +169,15 @@ PHP_METHOD(respond_connection_connection, emit)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    const char *event;
-    size_t event_len;
     zval *params;
+    int n_params;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &params)) {
-        return;
-    }
-
-    rp_event_emitter_emit(&resource->event_hook, event, event_len, params);
-    RETURN_ZVAL(params, 1, 0);
+    ZEND_PARSE_PARAMETERS_START(2, -1)
+        Z_PARAM_VARIADIC('+', params, n_params)
+    ZEND_PARSE_PARAMETERS_END_EX(return NULL);
+    convert_to_string_ex(&params[0]);
+    fprintf(stderr, "argc: %d %.*s\n", n_params, Z_STRLEN(params[0]), Z_STRVAL(params[0]));
+    rp_event_emitter_emit(&resource->event_hook, Z_STRVAL(params[0]), Z_STRLEN(params[0]), n_params - 1, &params[1]);
 }
 
 PHP_METHOD(respond_connection_connection, getRemoteAddress)

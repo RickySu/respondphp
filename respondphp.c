@@ -53,7 +53,7 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 
 PHP_RINIT_FUNCTION(respondphp)
 {
-//    zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
+    zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
     return SUCCESS;
 }
 
@@ -82,4 +82,27 @@ rp_task_type_t rp_get_task_type()
 void rp_set_task_type(rp_task_type_t type)
 {
     rp_task_type = type;
+}
+
+void rp_make_promise_object(zval *promise)
+{
+    zend_class_entry *ce;
+    zend_string *class_name = zend_string_init(ZEND_STRL(PREDEFINED_PHP_Respond_Async_Promise), 0);
+    ce = zend_fetch_class(class_name, ZEND_FETCH_CLASS_AUTO);
+    object_init_ex(promise, ce);
+    zend_string_release(class_name);
+}
+
+void rp_resolve_promise(zval *promise, zval *result)
+{
+    fcall_info_t fci;
+    zval fn, retval;
+
+    zval_add_ref(promise);
+    array_init(&fn);
+    add_next_index_zval(&fn, promise);
+    add_next_index_string(&fn, "resolve");
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
+    fci_call_function(&fci, &retval, 1, result);
+    ZVAL_PTR_DTOR(&fn);
 }

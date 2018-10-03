@@ -26,7 +26,7 @@
 #define TRAIT_FUNCTION_ARG_INFO_respond_event_event_emitter_interface_emit(ce) \
     ZEND_BEGIN_ARG_INFO(ARGINFO(ce, emit), 0) \
         ZEND_ARG_TYPE_INFO(0, event, IS_STRING, 0) \
-        ZEND_ARG_INFO(0, arguments) \
+        ZEND_ARG_VARIADIC_INFO(0, arguments) \
     ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_event_event_emitter_interface(ce) \

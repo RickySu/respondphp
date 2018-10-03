@@ -5,5 +5,5 @@ use Respond\Event\EventEmitterInterface;
 
 interface ServerInterface extends EventEmitterInterface
 {
-    public function close():void ;
+    public function close();
 }

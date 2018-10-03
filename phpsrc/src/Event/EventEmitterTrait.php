@@ -33,19 +33,19 @@ trait EventEmitterTrait
         unset($this->listeners[$event]);
     }
 
-    public function getListeners(string $event)
+    public function getListeners(string $event): ?array
     {
         return $this->listeners[$event]??array();
     }
 
-    public function emit(string $event, $argument)
+    public function emit(string $event, ...$argument)
     {
         if(!isset($this->listeners[$event])){
             return;
         }
 
         foreach ($this->listeners[$event] as $listener){
-            $listener($argument);
+            $listener(...$argument);
         }
     }
 }
