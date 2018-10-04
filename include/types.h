@@ -10,6 +10,7 @@ typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_t
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
 
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_client_s *client, char *ipc_data, size_t ipc_data_len);
+typedef uv_connection_cb rp_connection_cb;
 
 typedef union {
     uv_tcp_t  tcp;
@@ -28,7 +29,7 @@ typedef struct rp_reactor_s {
     rp_reactor_handler_t   handler;
     rp_reactor_type_t      type;
     rp_reactor_addr_t      addr;
-    uv_connection_cb       connection_cb;
+    rp_connection_cb       connection_cb;
     rp_accepted_cb         accepted_cb;
     zend_object            *server;
     struct rp_reactor_s    *next;
@@ -54,15 +55,5 @@ typedef struct {
     uv_buf_t buf;
     char data[0];
 } rp_write_req_t;
-
-static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
-{
-    rp_write_req_t *req;
-    req = rp_malloc(sizeof(rp_write_req_t) + data_len - 1);
-    req->buf.base = req->data;
-    req->buf.len = data_len;
-    memcpy(req->buf.base, data, data_len);
-    return req;
-}
 
 #endif

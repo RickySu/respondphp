@@ -14,10 +14,4 @@
     TRAIT_FUNCTION_ARG_INFO_respond_stream_readable_stream_interface_close(ce)
 
 TRAIT_FUNCTION_ARG_INFO(respond_stream_readable_stream_interface, respond_stream_readable_stream_interface);
-DECLARE_FUNCTION_ENTRY(respond_stream_readable_stream_interface) =
-{
-    PHP_ABSTRACT_ME(respond_stream_readable_stream_interface, isReadable, ARGINFO(respond_stream_readable_stream_interface, isReadable))
-    PHP_ABSTRACT_ME(respond_stream_readable_stream_interface, close, ARGINFO(respond_stream_readable_stream_interface, close))
-    PHP_FE_END
-};
 #endif

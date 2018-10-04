@@ -63,11 +63,21 @@ void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
 rp_reactor_t *rp_reactor_get_head();
 void rp_reactor_destroy();
-void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb, char *data, size_t data_len, uv_stream_t *ipc);
+void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_send(reactor, client, close_cb) rp_reactor_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_factory(rp_client_t *client, zval *connection);
 void rp_make_promise_object(zval *promise);
 void rp_resolve_promise(zval *promise, zval *result);
+
+static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
+{
+    rp_write_req_t *req;
+    req = rp_malloc(sizeof(rp_write_req_t) + data_len - 1);
+    req->buf.base = req->data;
+    req->buf.len = data_len;
+    memcpy(req->buf.base, data, data_len);
+    return req;
+}
 
 #ifdef HAVE_PR_SET_PDEATHSIG
 #define DETTACH_SESSION setsid

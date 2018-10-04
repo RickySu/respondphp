@@ -2,6 +2,19 @@
 #include "respondphp.h"
 #include "connection/connection.h"
 
+DECLARE_FUNCTION_ENTRY(respond_connection_connection) =
+{
+    PHP_ME(respond_connection_connection, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
+    PHP_ME(respond_connection_connection, close, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(respond_connection_connection, isReadable, ARGINFO(respond_stream_readable_stream_interface, isReadable), ZEND_ACC_PUBLIC) \
+    PHP_ME(respond_connection_connection, isWritable, ARGINFO(respond_stream_writable_stream_interface, isWritable), ZEND_ACC_PUBLIC) \
+    PHP_ME(respond_connection_connection, write, ARGINFO(respond_stream_writable_stream_interface, write), ZEND_ACC_PUBLIC) \
+    PHP_ME(respond_connection_connection, end, ARGINFO(respond_stream_writable_stream_interface, end), ZEND_ACC_PUBLIC) \
+    TRAIT_FUNCTION_ENTRY_ME(respond_connection_connection, event_emitter)
+    TRAIT_FUNCTION_ENTRY_ME(respond_connection_connection, socket_connection)
+    PHP_FE_END
+};
+
 static void connection_shutdown_cb(uv_shutdown_t* req, int status);
 static void connection_write_cb(rp_write_req_t *req, int status);
 static void connection_close_cb(uv_handle_t* handle);
@@ -193,7 +206,7 @@ PHP_METHOD(respond_connection_connection, emit)
 
     ZEND_PARSE_PARAMETERS_START(2, -1)
         Z_PARAM_VARIADIC('+', params, n_params)
-    ZEND_PARSE_PARAMETERS_END_EX(return NULL);
+    ZEND_PARSE_PARAMETERS_END_EX();
     convert_to_string_ex(&params[0]);
     rp_event_emitter_emit(&resource->event_hook, Z_STRVAL(params[0]), Z_STRLEN(params[0]), n_params - 1, &params[1]);
 }
@@ -235,7 +248,7 @@ PHP_METHOD(respond_connection_connection, isReadable)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    if(uv_is_readable(&resource->client->stream)){
+    if(uv_is_readable((const uv_stream_t *) &resource->client->stream)){
         RETURN_TRUE;
     }
     RETURN_FALSE;
@@ -245,7 +258,7 @@ PHP_METHOD(respond_connection_connection, isWritable)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    if(uv_is_writable(&resource->client->stream)){
+    if(uv_is_writable((const uv_stream_t *) &resource->client->stream)){
         RETURN_TRUE;
     }
     RETURN_FALSE;
@@ -255,7 +268,7 @@ PHP_METHOD(respond_connection_connection, write)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    const char *data;
+    char *data;
     size_t data_len;
     rp_write_req_t *req;
 
@@ -264,7 +277,7 @@ PHP_METHOD(respond_connection_connection, write)
     }
 
     req = rp_make_write_req(data, data_len);
-    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->client->stream, &req->buf, 1, connection_write_cb)){
+    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->client->stream, &req->buf, 1, (uv_write_cb) connection_write_cb)){
         rp_free(req);
         RETURN_FALSE;
     }
@@ -275,17 +288,18 @@ PHP_METHOD(respond_connection_connection, end)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    const char *data = NULL;
+    char *data = NULL;
     size_t data_len;
     rp_write_req_t *write_req;
     uv_shutdown_t *shutdown_req;
+
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|s", &data, &data_len)) {
         return;
     }
 
     if(data != NULL) {
         write_req = rp_make_write_req(data, data_len);
-        if(uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->client->stream, &write_req->buf, 1, connection_write_cb)){
+        if(uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->client->stream, &write_req->buf, 1, (uv_write_cb) connection_write_cb)){
             rp_free(write_req);
             RETURN_FALSE;
         }

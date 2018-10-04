@@ -3,10 +3,6 @@
 #include "internal/event_emitter.h"
 
 #define UV_TCP_HANDLE_INTERNAL_REF 1
-#define UV_TCP_HANDLE_START (1<<1)
-#define UV_TCP_READ_START (1<<2)
-#define UV_TCP_CLOSING_START (1<<3)
-#define UV_TCP_WRITE_CALLBACK_ENABLE (1<<4)
 
 ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_tcp, __construct), 0)
     ZEND_ARG_INFO(0, host)
@@ -18,11 +14,6 @@ typedef struct {
     event_hook_t event_hook;
     zend_object zo;
 } rp_tcp_ext_t;
-
-typedef struct write_req_s{
-    uv_write_t uv_write;
-    uv_buf_t buf;
-} write_req_t;
 
 PHP_METHOD(respond_server_tcp, close);
 PHP_METHOD(respond_server_tcp, __construct);

@@ -3,7 +3,7 @@
 
 typedef struct {
     uv_write_t write_req;
-    uv_close_cb *close_cb;
+    uv_close_cb close_cb;
     uv_stream_t *client;
     uv_buf_t buf;
     rp_reactor_ext_t reactor_ext;

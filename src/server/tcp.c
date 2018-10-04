@@ -7,30 +7,10 @@ static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_client_t *client);
 static void releaseResource(rp_tcp_ext_t *resource);
-static void tcp_close_cb(uv_handle_t* handle);
-static void tcp_close_socket(rp_tcp_ext_t *handle);
-static void setSelfReference(rp_tcp_ext_t *resource);
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
     rp_free(handle);
-}
-
-static void tcp_close_socket(rp_tcp_ext_t *handle)
-{
-    if(handle->flag & UV_TCP_CLOSING_START) {
-         return;
-    }
-    handle->flag |= UV_TCP_CLOSING_START;
-    uv_close((uv_handle_t *) handle, tcp_close_cb);
-}
-
-static void setSelfReference(rp_tcp_ext_t *resource)
-{
-    if(resource->flag & UV_TCP_HANDLE_INTERNAL_REF) {
-        return;
-    }
-    resource->flag |= UV_TCP_HANDLE_INTERNAL_REF;
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
@@ -49,11 +29,6 @@ static void releaseResource(rp_tcp_ext_t *resource)
     }
 }
 
-static void tcp_close_cb(uv_handle_t* handle)
-{
-    releaseResource((rp_tcp_ext_t *) handle);
-}
-
 static void connection_cb(rp_reactor_t *reactor, int status)
 {
     if (status < 0) {
@@ -64,7 +39,7 @@ static void connection_cb(rp_reactor_t *reactor, int status)
     uv_tcp_init(&main_loop, client);
     
     if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
-        rp_reactor_send(reactor, client, client_accept_close_cb);
+        rp_reactor_send(reactor, (uv_stream_t *) client, client_accept_close_cb);
         return;
     }
     
@@ -98,8 +73,6 @@ PHP_METHOD(respond_server_tcp, __construct)
     const char *host = NULL;
     size_t host_len;
     char cstr_host[40];
-    struct sockaddr_in sockaddr;
-    struct sockaddr_in6 sockaddr6;
 
     rp_reactor_t *reactor;
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
@@ -129,8 +102,8 @@ PHP_METHOD(respond_server_tcp, __construct)
     }
 
     reactor->type = RP_TCP;
-    reactor->connection_cb = connection_cb;
-    reactor->accepted_cb = accepted_cb;
+    reactor->connection_cb = (rp_connection_cb) connection_cb;
+    reactor->accepted_cb = (rp_accepted_cb) accepted_cb;
     reactor->server = &resource->zo;
 }
 
@@ -146,10 +119,8 @@ static void accepted_cb(zend_object *server, rp_client_t *client)
 
 PHP_METHOD(respond_server_tcp, close)
 {
-    long ret;
-    zval *self = getThis();
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
-//    tcp_close_socket((rp_tcp_ext_t *) &resource->handler);
+//    zval *self = getThis();
+//    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
 }
 
 PHP_METHOD(respond_server_tcp, on)
@@ -225,7 +196,7 @@ PHP_METHOD(respond_server_tcp, emit)
 
     ZEND_PARSE_PARAMETERS_START(2, -1)
         Z_PARAM_VARIADIC('+', params, n_params)
-    ZEND_PARSE_PARAMETERS_END_EX(return NULL);
+    ZEND_PARSE_PARAMETERS_END_EX();
     convert_to_string_ex(&params[0]);
     rp_event_emitter_emit(&resource->event_hook, Z_STRVAL(params[0]), Z_STRLEN(params[0]), n_params - 1, &params[1]);
 }

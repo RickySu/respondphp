@@ -1,17 +1,17 @@
 #include "respondphp.h"
 #include "server/routine.h"
 
-static fcall_info_t serialize_fci;
-static zend_bool serialize_fci_inited = 0;
-static fcall_info_t unserialize_fci;
-static zend_bool unserialize_fci_inited = 0;
+DECLARE_FUNCTION_ENTRY(respond_server_routine) =
+{
+    PHP_ME(respond_server_routine, __construct, ARGINFO(respond_server_routine, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+    PHP_ME(respond_server_routine, execute, ARGINFO(respond_server_routine, execute), ZEND_ACC_PUBLIC)
+    PHP_FE_END
+};
 
 static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
 static void free_respond_server_routine_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
 static void close_cb(rp_client_t *client);
-static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf);
-static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data, size_t ipc_data_len);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf);
@@ -20,18 +20,12 @@ static void routine_result_write_cb(rp_write_req_t *req, int status);
 static void releaseResource(rp_routine_ext_t *resource);
 static void routine_execution_free(zval *hook);
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args);
-static void routine_close_cb(uv_handle_t* handle);
-static void setSelfReference(rp_routine_ext_t *resource);
 static void rp_serialize(zval *param, zval *serialized);
 static void rp_unserialize(zval *param, char *serialized, size_t serialized_len);
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
     rp_free(handle);
-}
-
-static void setSelfReference(rp_routine_ext_t *resource)
-{
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_server_routine)
@@ -46,14 +40,6 @@ static void releaseResource(rp_routine_ext_t *resource)
 {
     zend_hash_destroy(&resource->routine_executions);
     ZVAL_PTR_DTOR(&resource->execution);
-}
-
-static void routine_close_cb(uv_handle_t* handle)
-{
-}
-
-static void connection_cb(rp_reactor_t *reactor, int status)
-{
 }
 
 static void routine_execution_free(zval *item)
@@ -81,13 +67,14 @@ static void routine_result_read_cb(routine_execution_t *routine_execution, int s
     zval result;
     rp_routine_ext_t *resource = routine_execution->resource;
     if(status > 0){
+        fprintf(stderr, "resolve: %.*s\n", status, buf->base);
         rp_unserialize(&result, buf->base, status);
         zend_print_zval_r(&result, 0);
         rp_resolve_promise(&routine_execution->promise, &result);
         ZVAL_PTR_DTOR(&result);
     }
     rp_free(buf->base);
-    uv_close(&routine_execution->pipe, (uv_close_cb) routine_result_close_cb);
+    uv_close((uv_handle_t *) &routine_execution->pipe, (uv_close_cb) routine_result_close_cb);
 }
 
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args)
@@ -108,14 +95,14 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
         msg_len = Z_STRLEN_P(args);
     }
 
-    rp_reactor_send_ex(resource->reactor, pipe, client_accept_close_cb, msg, msg_len, &routine_pipe);
+    rp_reactor_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
     routine_execution = rp_malloc(sizeof(routine_execution_t));
     routine_execution->resource = resource;
     uv_pipe_init(&main_loop, &routine_execution->pipe, 0);
     uv_pipe_open(&routine_execution->pipe, fd[1]);
     routine_execution->fd = fd[1];
     zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->fd, routine_execution);
-    uv_read_start(&routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
+    uv_read_start((uv_stream_t *) &routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
     return routine_execution;
 }
 
@@ -151,7 +138,6 @@ PHP_METHOD(respond_server_routine, __construct)
 
     reactor = rp_reactor_add();
     reactor->type = RP_ROUTINE;
-    reactor->connection_cb = connection_cb;
     reactor->accepted_cb = accepted_cb;
     reactor->server = &resource->zo;
     resource->reactor = reactor;
@@ -210,7 +196,7 @@ static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data
     RP_ASSERT(Z_TYPE(serialized) == IS_STRING);
 
     req = rp_make_write_req(Z_STRVAL(serialized), Z_STRLEN(serialized));
-    uv_write(req, (uv_stream_t *) client, &req->buf, 1, routine_result_write_cb);
+    uv_write((uv_write_t *) req, (uv_stream_t *) client, &req->buf, 1, (uv_write_cb) routine_result_write_cb);
     ZVAL_PTR_DTOR(&param);
     ZVAL_PTR_DTOR(&retval);
     ZVAL_PTR_DTOR(&serialized);
@@ -225,25 +211,21 @@ static void routine_result_write_cb(rp_write_req_t *req, int status)
 static void rp_serialize(zval *serialized, zval *param)
 {
     zval fn;
-    if(!serialize_fci_inited) {
-        ZVAL_STRING(&fn, "serialize");
-        zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(serialize_fci), NULL, NULL);
-        ZVAL_PTR_DTOR(&fn);
-        serialize_fci_inited = 1;
-    }
+    fcall_info_t serialize_fci;
+    ZVAL_STRING(&fn, "serialize");
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(serialize_fci), NULL, NULL);
+    ZVAL_PTR_DTOR(&fn);
     fci_call_function(&serialize_fci, serialized, 1, param);
 }
 
 static void rp_unserialize(zval *retval, char *serialized, size_t serialized_len)
 {
     zval fn, param;
-    if(!unserialize_fci_inited) {
-        ZVAL_STRING(&fn, "unserialize");
-        ZVAL_STRINGL(&param, serialized, serialized_len);
-        zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(unserialize_fci), NULL, NULL);
-        ZVAL_PTR_DTOR(&fn);
-        ZVAL_PTR_DTOR(&param);
-        unserialize_fci_inited = 1;
-    }
+    fcall_info_t unserialize_fci;
+    ZVAL_STRING(&fn, "unserialize");
+    ZVAL_STRINGL(&param, serialized, serialized_len);
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(unserialize_fci), NULL, NULL);
+    ZVAL_PTR_DTOR(&fn);
+    ZVAL_PTR_DTOR(&param);
     fci_call_function(&unserialize_fci, retval, 1, &param);
 }

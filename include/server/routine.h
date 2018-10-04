@@ -32,11 +32,4 @@ typedef struct {
 
 PHP_METHOD(respond_server_routine, __construct);
 PHP_METHOD(respond_server_routine, execute);
-
-DECLARE_FUNCTION_ENTRY(respond_server_routine) =
-{
-    PHP_ME(respond_server_routine, __construct, ARGINFO(respond_server_routine, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
-    PHP_ME(respond_server_routine, execute, ARGINFO(respond_server_routine, execute), ZEND_ACC_PUBLIC)
-    PHP_FE_END
-};
 #endif
