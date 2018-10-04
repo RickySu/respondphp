@@ -37,6 +37,7 @@
 extern uv_loop_t main_loop;
 extern uv_pipe_t ipc_pipe;
 extern uv_pipe_t routine_pipe;
+extern zend_module_entry respondphp_module_entry;
 
 PHP_MINIT_FUNCTION(respondphp);
 PHP_MSHUTDOWN_FUNCTION(respondphp);
@@ -44,10 +45,9 @@ PHP_MINFO_FUNCTION(respondphp);
 PHP_RINIT_FUNCTION(respondphp);
 PHP_RSHUTDOWN_FUNCTION(respondphp);
 
-extern zend_module_entry respondphp_module_entry;
-
 DECLARE_CLASS_ENTRY(respond_event_loop);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
+DECLARE_CLASS_ENTRY(respond_server_pipe);
 DECLARE_CLASS_ENTRY(respond_server_routine);
 DECLARE_CLASS_ENTRY(respond_connection_connection);
 DECLARE_CLASS_ENTRY(respond_event_event_emitter_interface);

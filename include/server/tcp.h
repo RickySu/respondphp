@@ -2,8 +2,6 @@
 #define _RP_SERVER_TCP_H
 #include "internal/event_emitter.h"
 
-#define UV_TCP_HANDLE_INTERNAL_REF 1
-
 ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_tcp, __construct), 0)
     ZEND_ARG_INFO(0, host)
     ZEND_ARG_INFO(0, port)
@@ -12,6 +10,7 @@ ZEND_END_ARG_INFO()
 typedef struct {
     uint flag;
     event_hook_t event_hook;
+    rp_reactor_t *reactor;
     zend_object zo;
 } rp_tcp_ext_t;
 

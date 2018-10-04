@@ -123,6 +123,11 @@ static void rp_init_actor_server()
                 uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr*) &reactor->addr, 0);
                 uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->connection_cb);
                 break;
+            case RP_PIPE:
+                uv_pipe_init(&main_loop, &reactor->handler.pipe, 0);
+                uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path);
+                uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->connection_cb);
+                break;
             default:
                 break;
         }
