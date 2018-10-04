@@ -30,25 +30,6 @@ typedef struct {
     rp_routine_ext_t *resource;
 } routine_execution_t;
 
-static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
-static void free_respond_server_routine_resource(zend_object *object);
-static void client_accept_close_cb(uv_handle_t* handle);
-static void close_cb(rp_client_t *client);
-static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf);
-static void connection_cb(rp_reactor_t *reactor, int status);
-static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data, size_t ipc_data_len);
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
-static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf);
-static void routine_result_close_cb(routine_execution_t *routine_execution);
-static void routine_result_write_cb(rp_write_req_t *req, int status);
-static void releaseResource(rp_routine_ext_t *resource);
-static void routine_execution_free(zval *hook);
-static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args);
-static void routine_close_cb(uv_handle_t* handle);
-static void setSelfReference(rp_routine_ext_t *resource);
-static void rp_serialize(zval *param, zval *serialized);
-static void rp_unserialize(zval *param, char *serialized, size_t serialized_len);
-
 PHP_METHOD(respond_server_routine, __construct);
 PHP_METHOD(respond_server_routine, execute);
 

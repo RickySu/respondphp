@@ -5,14 +5,13 @@
 #define RUN_ONCE  1
 #define RUN_NOWAIT 2
 
+extern ZEND_API zend_class_entry *zend_ce_traversable;
+
 typedef struct {
     zend_object zo;  
 } rp_event_loop_ext_t;
 
 CLASS_ENTRY_FUNCTION_D(respond_event_loop);
-
-static zend_object *create_respond_event_loop_resource(zend_class_entry *class_type);
-static void free_respond_event_loop_resource(zend_object *object);
 
 ZEND_BEGIN_ARG_INFO(ARGINFO(respond_event_loop, run), 0)
     ZEND_ARG_INFO(0, option)

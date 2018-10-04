@@ -1,7 +1,9 @@
 #include "respondphp.h"
 #include "event_loop.h"
 
-extern ZEND_API zend_class_entry *zend_ce_traversable;
+static zend_object *create_respond_event_loop_resource(zend_class_entry *class_type);
+static void free_respond_event_loop_resource(zend_object *object);
+
 CLASS_ENTRY_FUNCTION_D(respond_event_loop)
 {
     REGISTER_CLASS_WITH_OBJECT_NEW(respond_event_loop, "Respond\\Event\\Loop", create_respond_event_loop_resource);

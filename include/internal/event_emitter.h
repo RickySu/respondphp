@@ -50,9 +50,4 @@ do{ \
     PHP_METHOD(ce, getListeners); \
     PHP_METHOD(ce, emit)
 
-//TRAIT_PHP_METHOD_DEFINE(event_emitter, on);
-//TRAIT_PHP_METHOD_DEFINE(event_emitter, off);
-//TRAIT_PHP_METHOD_DEFINE(event_emitter, removeListeners);
-//TRAIT_PHP_METHOD_DEFINE(event_emitter, getListeners);
-//TRAIT_PHP_METHOD_DEFINE(event_emitter, emit);
 #endif //_RP_INTERNAL_EVENT_EMMITER_H

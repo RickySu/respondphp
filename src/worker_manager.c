@@ -5,6 +5,11 @@
 #include "worker_manager.h"
 static uint rp_worker_count = 0;
 
+static void rp_do_init_worker_manager();
+static int makeForks(int n);
+static void signal_chld_handler(uv_signal_t* signal, int signum);
+static void wait_all_children();
+
 static int makeForks(int n)
 {
     int i, pid = 1;

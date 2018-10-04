@@ -24,16 +24,6 @@ typedef struct write_req_s{
     uv_buf_t buf;
 } write_req_t;
 
-static zend_object *create_respond_server_tcp_resource(zend_class_entry *class_type);
-static void free_respond_server_tcp_resource(zend_object *object);
-static void client_accept_close_cb(uv_handle_t* handle);
-static void connection_cb(rp_reactor_t *reactor, int status);
-static void accepted_cb(zend_object *server, rp_client_t *client);
-static void releaseResource(rp_tcp_ext_t *resource);
-static void tcp_close_cb(uv_handle_t* handle);
-static void tcp_close_socket(rp_tcp_ext_t *handle);
-static void setSelfReference(rp_tcp_ext_t *resource);
-
 PHP_METHOD(respond_server_tcp, close);
 PHP_METHOD(respond_server_tcp, __construct);
 
