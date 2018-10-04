@@ -34,7 +34,6 @@ static void signal_chld_handler(uv_signal_t* signal, int signum)
             uv_stop(&routine_manager->loop);
             break;
         case SIGHUP:
-            fprintf(stderr, "MANAGER HUP %d %d %d\n", SIGHUP, signum, getpid());
             uv_signal_stop(&routine_manager->signal);
             exit(0);
         default:

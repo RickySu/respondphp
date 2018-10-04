@@ -20,16 +20,12 @@ zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event,
 void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);
 void rp_event_hook_init(event_hook_t *hook);
 void rp_event_hook_destroy(event_hook_t *hook);
-static void rp_event_hook_cache_list_free(zval *hook);
-static void rp_event_hook_cache_free(zval *hook);
 
 #define rp_event_hook_clean(hook) \
 do{ \
     rp_event_hook_destroy(hook); \
     rp_event_hook_init(hook); \
 } while(0)
-
-static void rp_event_hook_cache_free(zval *hook);
 
 #define TRAIT_FUNCTION_ENTRY_ME_event_emitter(ce) \
     PHP_ME(ce, on, ARGINFO(ce, on), ZEND_ACC_PUBLIC) \
@@ -54,9 +50,9 @@ static void rp_event_hook_cache_free(zval *hook);
     PHP_METHOD(ce, getListeners); \
     PHP_METHOD(ce, emit)
 
-TRAIT_PHP_METHOD_DEFINE(event_emitter, on);
-TRAIT_PHP_METHOD_DEFINE(event_emitter, off);
-TRAIT_PHP_METHOD_DEFINE(event_emitter, removeListeners);
-TRAIT_PHP_METHOD_DEFINE(event_emitter, getListeners);
-TRAIT_PHP_METHOD_DEFINE(event_emitter, emit);
+//TRAIT_PHP_METHOD_DEFINE(event_emitter, on);
+//TRAIT_PHP_METHOD_DEFINE(event_emitter, off);
+//TRAIT_PHP_METHOD_DEFINE(event_emitter, removeListeners);
+//TRAIT_PHP_METHOD_DEFINE(event_emitter, getListeners);
+//TRAIT_PHP_METHOD_DEFINE(event_emitter, emit);
 #endif //_RP_INTERNAL_EVENT_EMMITER_H

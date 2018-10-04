@@ -100,7 +100,7 @@
     } while(0)
 #define getTraitResource() resource_field
 #define TRAIT_FUNCTION_ARG_INFO(ce, trait_name) TRAIT_FUNCTION_ARG_INFO_##trait_name(ce)
-#define TRAIT_METHOD_NAME(trait_name, method_name)  rp_trait_##trait_name##_##method_name
+#define TRAIT_METHOD_NAME(trait_name, method_name) rp_trait_##trait_name##_##method_name
 #define TRAIT_FUNCTION_ENTRY_ME(ce, trait_name) TRAIT_FUNCTION_ENTRY_ME_##trait_name(ce)
 #define TRAIT_PHP_METHOD(ce, trait_name) TRAIT_PHP_METHOD_##trait_name(ce)
 #define TRAIT_PHP_METHOD_USE(ce, trait_name, resource_type, resource_field) TRAIT_PHP_METHOD_USE_##trait_name(ce, resource_type, resource_field)

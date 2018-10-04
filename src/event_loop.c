@@ -65,9 +65,7 @@ PHP_METHOD(respond_event_loop, run)
     }
 
     int ret = rp_init_reactor(worker_fd, routine_fd);
-    fprintf(stderr, "init pipe: %d\n", ret);
     uv_run(&main_loop, mode);
-    fprintf(stderr, "loop end %d\n", getpid());
 }
 
 PHP_METHOD(respond_event_loop, stop)

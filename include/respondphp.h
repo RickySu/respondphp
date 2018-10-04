@@ -64,13 +64,23 @@ rp_reactor_t *rp_reactor_add();
 rp_reactor_t *rp_reactor_get_head();
 void rp_reactor_destroy();
 void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb *close_cb, char *data, size_t data_len, uv_stream_t *ipc);
-#define rp_reactor_send(reactor, client, close_cb) \
-do{\
-    rp_reactor_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe);\
-} while(0)
-
+#define rp_reactor_send(reactor, client, close_cb) rp_reactor_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_factory(rp_client_t *client, zval *connection);
 void rp_make_promise_object(zval *promise);
 void rp_resolve_promise(zval *promise, zval *result);
+
+#ifdef HAVE_PR_SET_PDEATHSIG
+#define DETTACH_SESSION setsid
+extern  uv_signal_t signal_handle;
+static zend_always_inline void rp_register_pdeath_sig(uv_loop_t *loop, int signum, uv_signal_cb signal_cb)
+{
+    uv_signal_init(loop, &signal_handle);
+    prctl(PR_SET_PDEATHSIG, SIGHUP);
+    uv_signal_start(&signal_handle, signal_cb, signum);
+}
+#else
+#define DETTACH_SESSION()
+#define rp_register_pdeath_sig(x, y, z)
+#endif
 
 #endif

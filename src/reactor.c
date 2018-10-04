@@ -84,22 +84,12 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
     rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
     rp_client_t *client;
 
-    fprintf(stderr, "recv: %p %p\n", reactor_ext, buf->base);
-
     if (!uv_pipe_pending_count(pipe)) {
-        fprintf(stderr, "(%d) No pending count %p\n", getpid(), buf->base);
         rp_free(buf->base);
         return;
     }
+
     rp_reactor_t *reactor = reactor_ext->reactor;
-
-    fprintf(stderr, "recv actor: %d, %p, %p %d\n", status, reactor_ext, reactor, reactor_ext->data_len);
-
-    if(reactor_ext->data_len > 0) {
-        fprintf(stderr, "recv actor data: %.*s\n", reactor_ext->data_len, reactor_ext->data);
-    }
-
-    fprintf(stderr, "recv accepted_cb: %p\n", reactor_ext->reactor->accepted_cb);
 
     if(client = rp_accept_client(pipe, reactor_ext->reactor)) {
         reactor_ext->reactor->accepted_cb(reactor_ext->reactor->server, client, reactor_ext->data, reactor_ext->data_len);
@@ -119,10 +109,8 @@ static void rp_init_actor_server()
     rp_reactor_t *reactor = rp_reactor_get_head();
 
     while(reactor) {
-        fprintf(stderr, "init actor server\n");
         switch(reactor->type) {
             case RP_TCP:
-                fprintf(stderr, "init tcp server\n");
                 uv_tcp_init(&main_loop, &reactor->handler.tcp);
                 uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr*) &reactor->addr, 0);
                 uv_listen(&reactor->handler.tcp, SOMAXCONN, reactor->connection_cb);
@@ -146,14 +134,12 @@ int rp_init_reactor(int worker_fd, int routine_fd)
             rp_init_actor_server();
             break;
         case WORKER:
-            fprintf(stderr, "worker: %d\n", getpid());
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             ret = rp_init_worker_server(worker_fd);
             uv_pipe_init(&main_loop, &routine_pipe, 1);
             uv_pipe_open(&routine_pipe, routine_fd);
             break;            
         case ROUTINE:
-            fprintf(stderr, "routine: %d\n", getpid());
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             ret = rp_init_routine_server(routine_fd);
             break;
@@ -201,21 +187,11 @@ void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb 
     memcpy(&send_req->reactor_ext.data, data, data_len);
     send_req->buf.base = &send_req->reactor_ext;
     send_req->buf.len = sizeof(send_req->reactor_ext) + data_len;
-    fprintf(stderr, "send actor len: %d, %d, %d, %d, %d, %d\n",
-            send_req->buf.len,
-            sizeof(send_req->reactor_ext),
-            sizeof(send_req->reactor_ext.reactor),
-            sizeof(send_req->reactor_ext.data_len),
-            sizeof(send_req->reactor_ext.data),
-            send_req->reactor_ext.data_len);
-    fprintf(stderr, "send actor: %d, %p, %p %d\n", send_req->buf.len, reactor, (void *) send_req->buf.base, send_req->reactor_ext.data_len);
     int ret = uv_write2((uv_write_t *) send_req, ipc, &send_req->buf, 1, client, (uv_write_cb) write2_cb);
-    fprintf(stderr, "send actor end: %d %s %.*s\n", ret, uv_strerror(ret), send_req->reactor_ext.data_len, &send_req->reactor_ext.data);
 }
 
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum)
 {
-    fprintf(stderr, "worker HUP %d %d %d\n", SIGHUP, signum, getpid());
     uv_signal_stop(signal);
     uv_stop(&main_loop);
 }

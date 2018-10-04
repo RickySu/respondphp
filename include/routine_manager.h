@@ -1,8 +1,6 @@
 #ifndef _RP_ROUTINE_MANAGER_H
 #define _RP_ROUTINE_MANAGER_H
 
-#include "reactor.h"
-
 #define RP_ROUTINE_MAX 3
 
 typedef struct {

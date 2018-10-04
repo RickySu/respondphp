@@ -1,8 +1,6 @@
 #ifndef _RP_WORKER_MANAGER_H
 #define _RP_WORKER_MANAGER_H
 
-#include "reactor.h"
-
 #define RP_WORKER_MAX 3
 
 typedef struct {

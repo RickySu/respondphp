@@ -1,6 +1,9 @@
 #include "respondphp.h"
 #include "internal/event_emitter.h"
 
+static void rp_event_hook_cache_list_free(zval *hook);
+static void rp_event_hook_cache_free(zval *hook);
+
 void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook)
 {
     zval new_array, *array;
@@ -88,7 +91,7 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
     ht_counter = Z_PTR_P(array);
 
     zend_hash_internal_pointer_reset(&ht_counter->ht);
-    while(current = zend_hash_get_current_data(&ht_counter->ht)) {
+    while((current = zend_hash_get_current_data(&ht_counter->ht)) != NULL) {
         fci = Z_PTR_P(current);
         fci_call_function(fci, &retval, n_param, param);
         zend_hash_move_forward(&ht_counter->ht);

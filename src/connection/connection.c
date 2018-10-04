@@ -176,7 +176,6 @@ PHP_METHOD(respond_connection_connection, emit)
         Z_PARAM_VARIADIC('+', params, n_params)
     ZEND_PARSE_PARAMETERS_END_EX(return NULL);
     convert_to_string_ex(&params[0]);
-    fprintf(stderr, "argc: %d %.*s\n", n_params, Z_STRLEN(params[0]), Z_STRVAL(params[0]));
     rp_event_emitter_emit(&resource->event_hook, Z_STRVAL(params[0]), Z_STRLEN(params[0]), n_params - 1, &params[1]);
 }
 
