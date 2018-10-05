@@ -2,6 +2,7 @@
 #define _RP_TYPES_H
 
 #define RP_CONNECTION_CLOSED 1
+#define RP_CONNECTION_SHUTDOWN (1<<1)
 
 struct rp_reactor_s;
 struct rp_client_s;

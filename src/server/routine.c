@@ -67,14 +67,15 @@ static void routine_result_read_cb(routine_execution_t *routine_execution, int s
     zval result;
     rp_routine_ext_t *resource = routine_execution->resource;
     if(status > 0){
-        fprintf(stderr, "resolve: %.*s\n", status, buf->base);
         rp_unserialize(&result, buf->base, status);
-        zend_print_zval_r(&result, 0);
         rp_resolve_promise(&routine_execution->promise, &result);
         ZVAL_PTR_DTOR(&result);
     }
     rp_free(buf->base);
+
+    fprintf(stderr, "r1:\n");
     uv_close((uv_handle_t *) &routine_execution->pipe, (uv_close_cb) routine_result_close_cb);
+    fprintf(stderr, "r2:\n");
 }
 
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args)
@@ -123,6 +124,7 @@ static void free_respond_server_routine_resource(zend_object *object)
     resource = FETCH_RESOURCE(object, rp_routine_ext_t);
     releaseResource(resource);
     zend_object_std_dtor(object);
+    rp_free(resource);
 }
 
 PHP_METHOD(respond_server_routine, __construct)
@@ -204,7 +206,9 @@ static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data
 
 static void routine_result_write_cb(rp_write_req_t *req, int status)
 {
+    fprintf(stderr, "r3:\n");
     uv_close((uv_handle_t *) req->uv_write.handle, (uv_close_cb) close_cb);
+    fprintf(stderr, "r4:\n");
     rp_free(req);
 }
 

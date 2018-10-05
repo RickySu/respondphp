@@ -50,7 +50,7 @@ static void wait_all_children()
     int child_pid;
     while((child_pid = waitpid(-1, NULL, WNOHANG)) > 0){
         rp_worker_count--;
-        printf("worker dead: %d %d\n", child_pid, rp_worker_count);
+        fprintf(stderr, "worker dead: %d %d\n", child_pid, rp_worker_count);
     }
 }
 

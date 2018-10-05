@@ -8,6 +8,7 @@
 typedef struct {
     uint flag;
     rp_client_t  *client;
+    rp_write_req_t *close_write_req;
     event_hook_t event_hook;
     zend_object  zo;
 } rp_connection_ext_t;

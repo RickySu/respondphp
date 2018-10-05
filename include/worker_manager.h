@@ -1,7 +1,7 @@
 #ifndef _RP_WORKER_MANAGER_H
 #define _RP_WORKER_MANAGER_H
 
-#define RP_WORKER_MAX 3
+#define RP_WORKER_MAX 1
 
 typedef struct {
     uv_signal_t signal;

@@ -151,6 +151,7 @@ int rp_init_reactor(int worker_fd, int routine_fd)
             ret = rp_init_worker_server(worker_fd);
             uv_pipe_init(&main_loop, &routine_pipe, 1);
             uv_pipe_open(&routine_pipe, routine_fd);
+            fprintf(stderr, "worker: %d\n", getpid());
             break;            
         case ROUTINE:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
