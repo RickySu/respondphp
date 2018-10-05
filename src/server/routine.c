@@ -86,9 +86,6 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     uv_pipe_t *pipe;
     routine_execution_t *routine_execution;
     socketpair(AF_UNIX, SOCK_STREAM, 0, fd);
-    pipe = rp_malloc(sizeof(uv_pipe_t));
-    uv_pipe_init(&main_loop, pipe, 0);
-    uv_pipe_open(pipe, fd[0]);
 
     if(args){
         RP_ASSERT(Z_TYPE_P(args) == IS_STRING);
@@ -96,7 +93,6 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
         msg_len = Z_STRLEN_P(args);
     }
 
-    rp_reactor_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
     routine_execution = rp_malloc(sizeof(routine_execution_t));
     routine_execution->resource = resource;
     uv_pipe_init(&main_loop, &routine_execution->pipe, 0);
@@ -104,6 +100,11 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     routine_execution->fd = fd[1];
     zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->fd, routine_execution);
     uv_read_start((uv_stream_t *) &routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
+
+    pipe = rp_malloc(sizeof(uv_pipe_t));
+    uv_pipe_init(&main_loop, pipe, 0);
+    uv_pipe_open(pipe, fd[0]);
+    rp_reactor_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
     return routine_execution;
 }
 
@@ -124,7 +125,7 @@ static void free_respond_server_routine_resource(zend_object *object)
     resource = FETCH_RESOURCE(object, rp_routine_ext_t);
     releaseResource(resource);
     zend_object_std_dtor(object);
-    rp_free(resource);
+//    rp_free(resource);
 }
 
 PHP_METHOD(respond_server_routine, __construct)

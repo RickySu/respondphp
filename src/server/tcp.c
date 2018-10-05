@@ -61,7 +61,7 @@ static void free_respond_server_tcp_resource(zend_object *object)
     releaseResource(resource);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_std_dtor(object);
-    rp_free(resource);
+//    rp_free(resource);
 }
 
 PHP_METHOD(respond_server_tcp, __construct)

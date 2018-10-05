@@ -29,17 +29,20 @@ static zend_always_inline void connection_close(rp_connection_ext_t *resource)
         return;
     }
     resource->flag |= RP_CONNECTION_CLOSED;
+    fprintf(stderr, "%p %d close\n", resource, getpid());
     uv_close((uv_handle_t *) resource->client, connection_close_cb);
+    fprintf(stderr, "%p %d close end\n", resource, getpid());
 }
 
 static void connection_write_cb(rp_write_req_t *req, int status)
 {
-    zval param;
+    zval param[2];
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
     rp_free(req);
 //    fprintf(stderr, "write cb: %d %p\n", getpid(), resource);
-    ZVAL_LONG(&param, status);
-    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), 1, &param);
+    ZVAL_OBJ(&param[0], &resource->zo);
+    ZVAL_LONG(&param[1], status);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("write"), 2, param);
 
     if(resource->close_write_req == req) {
         connection_close(resource);
@@ -50,7 +53,7 @@ static void connection_close_cb(uv_handle_t* handle)
 {
     zval param;
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
-//    fprintf(stderr, "close cb: %d %p\n", getpid(), resource);
+    fprintf(stderr, "%p %d close cb\n", resource, getpid());
     releaseResource(resource);
 }
 
@@ -58,35 +61,38 @@ static void releaseResource(rp_connection_ext_t *resource)
 {
     zval gc;
     rp_free(resource->client);
-    ZVAL_OBJ(&gc, &resource->zo);
     rp_event_hook_destroy(&resource->event_hook);
-//    fprintf(stderr, "release resource: %p, %d %d\n", resource, getpid(), zval_refcount_p(&gc));
-    Z_DELREF(gc);
+    ZVAL_OBJ(&gc, &resource->zo);
+    fprintf(stderr, "%p %d %d release resource\n", resource, getpid(), zval_refcount_p(&gc));
+    zval_ptr_dtor(&gc);
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
     buf->base = (char*) rp_malloc(suggested_size);
     buf->len = suggested_size;
+    fprintf(stderr, "%p %d %p buffer\n", resource, getpid(), buf->base);
 }
 
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
-    zval param;
+    zval param[2];
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) stream)->connection_zo, rp_connection_ext_t);
-
+    ZVAL_OBJ(&param[0], &resource->zo);
+    fprintf(stderr, "%p %d %d recv\n", resource, getpid(), nread);
     if(nread > 0){
-        ZVAL_STRINGL(&param, buf->base, nread);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 1, &param);
-        ZVAL_PTR_DTOR(&param);
+        ZVAL_STRINGL(&param[1], buf->base, nread);
+        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 2, param);
+        ZVAL_PTR_DTOR(&param[1]);
     }
     else{
-        ZVAL_LONG(&param, nread);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), 1, &param);
+        ZVAL_LONG(&param[1], nread);
+        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), 2, param);
         connection_close(resource);
     }
-
     rp_free(buf->base);
+    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
 }
 
 void rp_connection_factory(rp_client_t *client, zval *connection)
@@ -96,6 +102,7 @@ void rp_connection_factory(rp_client_t *client, zval *connection)
     resource->client = client;
     client->connection_zo = Z_OBJ_P(connection);
     uv_read_start((uv_stream_t*) client, alloc_buffer, read_cb);
+//    Z_ADDREF_P(connection);
     //fprintf(stderr, "init %d %p\n", getpid(), resource);
 }
 
@@ -103,7 +110,7 @@ static zend_object *create_respond_connection_connection_resource(zend_class_ent
 {
     rp_connection_ext_t *resource;
     resource = ALLOC_RESOURCE(rp_connection_ext_t);
-//    fprintf(stderr, "alloc %d %p\n", getpid(), resource);
+    fprintf(stderr,  "%p %d alloc\n", resource, getpid());
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_connection_connection);
@@ -116,8 +123,8 @@ static void free_respond_connection_connection_resource(zend_object *object)
     rp_connection_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_connection_ext_t);
     zend_object_std_dtor(object);
-    rp_free(resource);
-//    fprintf(stderr, "\n\n\nfree connection: %p\n", resource);
+//    rp_free(resource);
+    fprintf(stderr, "%p %d free\n", resource, getpid());
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_connection_connection)

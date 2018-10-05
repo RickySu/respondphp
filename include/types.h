@@ -3,6 +3,7 @@
 
 #define RP_CONNECTION_CLOSED 1
 #define RP_CONNECTION_SHUTDOWN (1<<1)
+#define RP_CONNECTION_RELEASED (1<<2)
 
 struct rp_reactor_s;
 struct rp_client_s;

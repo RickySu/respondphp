@@ -77,7 +77,7 @@
 #define REGISTER_CLASS_CONSTANT_LONG(class, name) \
     zend_declare_class_constant_long(CLASS_ENTRY(class), ZEND_STRL(#name), name)
 
-#define ALLOC_RESOURCE(x) rp_calloc(1, sizeof(x) + zend_object_properties_size(ce))
+#define ALLOC_RESOURCE(x) ecalloc(1, sizeof(x) + zend_object_properties_size(ce))
 
 #define Z_DELREF_AND_DTOR_P(o) \
     do{ \
