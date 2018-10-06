@@ -29,7 +29,7 @@ CLASS_ENTRY_FUNCTION_D(respond_event_loop)
 static zend_object *create_respond_event_loop_resource(zend_class_entry *ce)
 {
     rp_event_loop_ext_t *resource;
-    resource = ALLOC_RESOURCE(rp_event_loop_ext_t);
+    resource = ALLOC_RESOURCE(rp_event_loop_ext_t, ce);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_event_loop);
@@ -41,7 +41,6 @@ static void free_respond_event_loop_resource(zend_object *object)
     rp_event_loop_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_event_loop_ext_t);
     zend_object_std_dtor(&resource->zo);
-//    rp_free(resource);
 }
 
 PHP_METHOD(respond_event_loop, run)

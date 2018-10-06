@@ -111,7 +111,7 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
 static zend_object *create_respond_server_routine_resource(zend_class_entry *ce)
 {
     rp_routine_ext_t *resource;
-    resource = ALLOC_RESOURCE(rp_routine_ext_t);
+    resource = ALLOC_RESOURCE(rp_routine_ext_t, ce);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_server_routine);
@@ -125,7 +125,6 @@ static void free_respond_server_routine_resource(zend_object *object)
     resource = FETCH_RESOURCE(object, rp_routine_ext_t);
     releaseResource(resource);
     zend_object_std_dtor(object);
-//    rp_free(resource);
 }
 
 PHP_METHOD(respond_server_routine, __construct)

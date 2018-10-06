@@ -109,7 +109,7 @@ void rp_connection_factory(rp_client_t *client, zval *connection)
 static zend_object *create_respond_connection_connection_resource(zend_class_entry *ce)
 {
     rp_connection_ext_t *resource;
-    resource = ALLOC_RESOURCE(rp_connection_ext_t);
+    resource = ALLOC_RESOURCE(rp_connection_ext_t, ce);
     fprintf(stderr,  "%p %d alloc\n", resource, getpid());
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
@@ -123,7 +123,6 @@ static void free_respond_connection_connection_resource(zend_object *object)
     rp_connection_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_connection_ext_t);
     zend_object_std_dtor(object);
-//    rp_free(resource);
     fprintf(stderr, "%p %d free\n", resource, getpid());
 }
 
