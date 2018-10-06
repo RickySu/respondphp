@@ -7,7 +7,7 @@
 
 typedef struct {
     uint flag;
-    rp_client_t  *client;
+    rp_stream_t    *stream;
     rp_write_req_t *close_write_req;
     event_hook_t event_hook;
     zend_object  zo;

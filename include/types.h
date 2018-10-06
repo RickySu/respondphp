@@ -6,12 +6,12 @@
 #define RP_CONNECTION_RELEASED (1<<2)
 
 struct rp_reactor_s;
-struct rp_client_s;
+struct rp_stream_s;
 
 typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_type_t;
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
 
-typedef void (*rp_accepted_cb)(zend_object *server, struct rp_client_s *client, char *ipc_data, size_t ipc_data_len);
+typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
 typedef uv_connection_cb rp_connection_cb;
 
 typedef union {
@@ -43,14 +43,14 @@ typedef struct {
     char data[0];
 } rp_reactor_ext_t;
 
-typedef struct rp_client_s{
+typedef struct rp_stream_s{
     union stream_u {
         uv_stream_t stream;
         uv_pipe_t pipe;
-        uv_tcp_t tcp;        
+        uv_tcp_t tcp;
     } stream;
     zend_object       *connection_zo;
-} rp_client_t;
+} rp_stream_t;
 
 typedef struct {
     uv_write_t uv_write;

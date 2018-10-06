@@ -11,8 +11,8 @@ DECLARE_FUNCTION_ENTRY(respond_server_routine) =
 static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
 static void free_respond_server_routine_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
-static void close_cb(rp_client_t *client);
-static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data, size_t ipc_data_len);
+static void close_cb(rp_stream_t *client);
+static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data, size_t ipc_data_len);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf);
 static void routine_result_close_cb(routine_execution_t *routine_execution);
@@ -172,12 +172,12 @@ PHP_METHOD(respond_server_routine, execute)
     RETVAL_ZVAL(&routine_execution->promise, 1, 0);
 }
 
-static void close_cb(rp_client_t *client)
+static void close_cb(rp_stream_t *client)
 {
     rp_free(client);
 }
 
-static void accepted_cb(zend_object *server, rp_client_t *client, char *ipc_data, size_t ipc_data_len)
+static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data, size_t ipc_data_len)
 {
     zval param, retval, serialized;
     rp_write_req_t *req;

@@ -15,12 +15,12 @@ static int rp_init_routine_server(int fd);
 static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void close_cb(uv_handle_t *handle);
-static rp_client_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
+static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 
-static rp_client_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
+static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
-    rp_client_t *client = (rp_client_t*) rp_malloc(sizeof(rp_client_t));
+    rp_stream_t *client = (rp_stream_t*) rp_malloc(sizeof(rp_stream_t));
 
     switch(reactor->type){
         case RP_TCP:
@@ -92,7 +92,7 @@ static void close_cb(uv_handle_t* handle)
 static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 {
     rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
-    rp_client_t *client;
+    rp_stream_t *client;
 
     if (!uv_pipe_pending_count(pipe)) {
         rp_free(buf->base);

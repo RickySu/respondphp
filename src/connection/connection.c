@@ -18,10 +18,11 @@ DECLARE_FUNCTION_ENTRY(respond_connection_connection) =
 static void connection_write_cb(rp_write_req_t *req, int status);
 static void connection_close_cb(uv_handle_t* handle);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
-static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf);
+static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
 static zend_object *create_respond_connection_connection_resource(zend_class_entry *class_type);
 static void free_respond_connection_connection_resource(zend_object *object);
 static void releaseResource(rp_connection_ext_t *resource);
+static void connection_shutdown_cb(uv_shutdown_t* req, int status);
 
 static zend_always_inline void connection_close(rp_connection_ext_t *resource)
 {
@@ -29,15 +30,15 @@ static zend_always_inline void connection_close(rp_connection_ext_t *resource)
         return;
     }
     resource->flag |= RP_CONNECTION_CLOSED;
-    fprintf(stderr, "%p %d close\n", resource, getpid());
-    uv_close((uv_handle_t *) resource->client, connection_close_cb);
-    fprintf(stderr, "%p %d close end\n", resource, getpid());
+//    fprintf(stderr, "%p %d close\n", resource, getpid());
+    uv_close((uv_handle_t *) resource->stream, connection_close_cb);
+//    fprintf(stderr, "%p %d close end\n", resource, getpid());
 }
 
 static void connection_write_cb(rp_write_req_t *req, int status)
 {
     zval param[2];
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
     rp_free(req);
 //    fprintf(stderr, "write cb: %d %p\n", getpid(), resource);
     ZVAL_OBJ(&param[0], &resource->zo);
@@ -49,38 +50,45 @@ static void connection_write_cb(rp_write_req_t *req, int status)
     }
 }
 
+static void connection_shutdown_cb(uv_shutdown_t* req, int status)
+{
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) req->handle)->connection_zo, rp_connection_ext_t);
+    rp_free(req);
+    connection_close(resource);
+}
+
 static void connection_close_cb(uv_handle_t* handle)
 {
     zval param;
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
-    fprintf(stderr, "%p %d close cb\n", resource, getpid());
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) handle)->connection_zo, rp_connection_ext_t);
+//    fprintf(stderr, "%p %d close cb\n", resource, getpid());
     releaseResource(resource);
 }
 
 static void releaseResource(rp_connection_ext_t *resource)
 {
     zval gc;
-    rp_free(resource->client);
+    rp_free(resource->stream);
     rp_event_hook_destroy(&resource->event_hook);
     ZVAL_OBJ(&gc, &resource->zo);
-    fprintf(stderr, "%p %d %d release resource\n", resource, getpid(), zval_refcount_p(&gc));
+//    fprintf(stderr, "%p %d %d release resource\n", resource, getpid(), zval_refcount_p(&gc));
     zval_ptr_dtor(&gc);
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) handle)->connection_zo, rp_connection_ext_t);
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) handle)->connection_zo, rp_connection_ext_t);
     buf->base = (char*) rp_malloc(suggested_size);
     buf->len = suggested_size;
-    fprintf(stderr, "%p %d %p buffer\n", resource, getpid(), buf->base);
+//    fprintf(stderr, "%p %d %p buffer\n", resource, getpid(), buf->base);
 }
 
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
     zval param[2];
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_client_t *) stream)->connection_zo, rp_connection_ext_t);
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) stream)->connection_zo, rp_connection_ext_t);
     ZVAL_OBJ(&param[0], &resource->zo);
-    fprintf(stderr, "%p %d %d recv\n", resource, getpid(), nread);
+//    fprintf(stderr, "%p %d %d recv\n", resource, getpid(), nread);
     if(nread > 0){
         ZVAL_STRINGL(&param[1], buf->base, nread);
         rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 2, param);
@@ -92,16 +100,16 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
         connection_close(resource);
     }
     rp_free(buf->base);
-    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
+//    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
 }
 
-void rp_connection_factory(rp_client_t *client, zval *connection)
+void rp_connection_factory(rp_stream_t *stream, zval *connection)
 {
     object_init_ex(connection, CLASS_ENTRY(respond_connection_connection));
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_ext_t);
-    resource->client = client;
-    client->connection_zo = Z_OBJ_P(connection);
-    uv_read_start((uv_stream_t*) client, alloc_buffer, read_cb);
+    resource->stream = stream;
+    stream->connection_zo = Z_OBJ_P(connection);
+    uv_read_start((uv_stream_t*) stream, alloc_buffer, read_cb);
 //    Z_ADDREF_P(connection);
     //fprintf(stderr, "init %d %p\n", getpid(), resource);
 }
@@ -110,7 +118,7 @@ static zend_object *create_respond_connection_connection_resource(zend_class_ent
 {
     rp_connection_ext_t *resource;
     resource = ALLOC_RESOURCE(rp_connection_ext_t, ce);
-    fprintf(stderr,  "%p %d alloc\n", resource, getpid());
+//    fprintf(stderr,  "%p %d alloc\n", resource, getpid());
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_connection_connection);
@@ -123,7 +131,7 @@ static void free_respond_connection_connection_resource(zend_object *object)
     rp_connection_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_connection_ext_t);
     zend_object_std_dtor(object);
-    fprintf(stderr, "%p %d free\n", resource, getpid());
+//    fprintf(stderr, "%p %d free\n", resource, getpid());
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_connection_connection)
@@ -223,8 +231,8 @@ PHP_METHOD(respond_connection_connection, getRemoteAddress)
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
 
-    if(resource->client->stream.stream.type == UV_TCP) {
-        rp_socket_connection_tcp_getRemoteAddress(&resource->client->stream.tcp, return_value);
+    if(resource->stream->stream.stream.type == UV_TCP) {
+        rp_socket_connection_tcp_getRemoteAddress(&resource->stream->stream.tcp, return_value);
         return;
     }
 
@@ -236,8 +244,8 @@ PHP_METHOD(respond_connection_connection, getLocalAddress)
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
 
-    if(resource->client->stream.stream.type == UV_TCP) {
-        rp_socket_connection_tcp_getLocalAddress(&resource->client->stream.tcp, return_value);
+    if(resource->stream->stream.stream.type == UV_TCP) {
+        rp_socket_connection_tcp_getLocalAddress(&resource->stream->stream.tcp, return_value);
         return;
     }
 
@@ -264,7 +272,7 @@ PHP_METHOD(respond_connection_connection, isReadable)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    if(uv_is_readable((const uv_stream_t *) &resource->client->stream)){
+    if(uv_is_readable((const uv_stream_t *) &resource->stream->stream)){
         RETURN_TRUE;
     }
     RETURN_FALSE;
@@ -274,7 +282,7 @@ PHP_METHOD(respond_connection_connection, isWritable)
 {
     zval *self = getThis();
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_ext_t);
-    if(uv_is_writable((const uv_stream_t *) &resource->client->stream)){
+    if(uv_is_writable((const uv_stream_t *) &resource->stream->stream)){
         RETURN_TRUE;
     }
     RETURN_FALSE;
@@ -296,13 +304,9 @@ PHP_METHOD(respond_connection_connection, write)
         RETURN_FALSE;
     }
 
-    if(resource->flag & RP_CONNECTION_CLOSED){
-        RETURN_FALSE;
-    }
-
 //fprintf(stderr, "write: %d %p\n", getpid(), resource);
     req = rp_make_write_req(data, data_len);
-    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->client->stream, &req->buf, 1, (uv_write_cb) connection_write_cb)){
+    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->stream->stream, &req->buf, 1, (uv_write_cb) connection_write_cb)){
         rp_free(req);
         RETURN_FALSE;
     }
@@ -318,7 +322,7 @@ PHP_METHOD(respond_connection_connection, end)
     uv_shutdown_t *shutdown_req;
     rp_write_req_t *write_req;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &data, &data_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|s", &data, &data_len)) {
         return;
     }
 
@@ -326,14 +330,19 @@ PHP_METHOD(respond_connection_connection, end)
         RETURN_FALSE;
     }
 
-    resource->flag |= RP_CONNECTION_SHUTDOWN;
-
-    write_req = rp_make_write_req(data, data_len);
-    if(uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->client->stream, &write_req->buf, 1, (uv_write_cb) connection_write_cb)){
-        rp_free(write_req);
-        RETURN_FALSE;
+    if(data != NULL) {
+        write_req = rp_make_write_req(data, data_len);
+        if (uv_write((uv_write_t *) write_req, (uv_stream_t *) &resource->stream->stream, &write_req->buf, 1,
+                     (uv_write_cb) connection_write_cb)) {
+            rp_free(write_req);
+            RETURN_FALSE;
+        }
     }
 
-    resource->close_write_req = write_req;
+    resource->flag |= RP_CONNECTION_SHUTDOWN;
+
+    shutdown_req = rp_malloc(sizeof(uv_shutdown_t));
+    uv_shutdown(shutdown_req, (uv_stream_t *) &resource->stream->stream, (uv_shutdown_cb) connection_shutdown_cb);
+
     RETURN_TRUE;
 }

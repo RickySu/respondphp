@@ -5,7 +5,7 @@ static zend_object *create_respond_server_tcp_resource(zend_class_entry *class_t
 static void free_respond_server_tcp_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
-static void accepted_cb(zend_object *server, rp_client_t *client);
+static void accepted_cb(zend_object *server, rp_stream_t *client);
 static void releaseResource(rp_tcp_ext_t *resource);
 
 static void client_accept_close_cb(uv_handle_t* handle)
@@ -105,7 +105,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     resource->reactor = reactor;
 }
 
-static void accepted_cb(zend_object *server, rp_client_t *client)
+static void accepted_cb(zend_object *server, rp_stream_t *client)
 {
     zval connection;
     rp_tcp_ext_t *resource = FETCH_RESOURCE(server, rp_tcp_ext_t);
