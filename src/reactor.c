@@ -200,7 +200,7 @@ void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb 
     send_req->reactor_ext.data_len = data_len;
     memcpy(&send_req->reactor_ext.data, data, data_len);
     send_req->buf.base = (char *) &send_req->reactor_ext;
-    send_req->buf.len = sizeof(send_req->reactor_ext) + data_len;
+    send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len - 1;
     uv_write2((uv_write_t *) send_req, ipc, &send_req->buf, 1, client, (uv_write_cb) write2_cb);
 }
 

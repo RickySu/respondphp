@@ -8,6 +8,7 @@ DECLARE_FUNCTION_ENTRY(respond_server_routine) =
     PHP_FE_END
 };
 
+static zend_ulong routine_execution_index = 0;
 static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
 static void free_respond_server_routine_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
@@ -22,9 +23,11 @@ static void routine_execution_free(zval *hook);
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args);
 static void rp_serialize(zval *param, zval *serialized);
 static void rp_unserialize(zval *param, char *serialized, size_t serialized_len);
+static void routine_result_shutdown_cb(uv_shutdown_t* req, int status);
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
+//    fprintf(stderr, "%p %d reactor send free\n", handle, getpid());
     rp_free(handle);
 }
 
@@ -44,10 +47,11 @@ static void releaseResource(rp_routine_ext_t *resource)
 
 static void routine_execution_free(zval *item)
 {
-    routine_execution_t *routine_execution;
-    routine_execution = Z_PTR_P(item);
+    routine_execution_t *routine_execution = Z_PTR_P(item);
+//    fprintf(stderr, "%p %d %d routine_execution_free\n", routine_execution, getpid(), Z_REFCOUNT(routine_execution->promise));
     ZVAL_PTR_DTOR(&routine_execution->promise);
     rp_free(routine_execution);
+//    fprintf(stderr, "%p %d routine_execution_free end\n", routine_execution, getpid());
 }
 
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
@@ -59,23 +63,24 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
 static void routine_result_close_cb(routine_execution_t *routine_execution)
 {
     rp_routine_ext_t *resource = routine_execution->resource;
-    zend_hash_index_del(&resource->routine_executions, routine_execution->fd);
+
+//    fprintf(stderr, "%p %d result close cb\n", routine_execution, getpid());
+    zend_hash_index_del(&resource->routine_executions, routine_execution->index);
 }
 
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf)
 {
     zval result;
-    rp_routine_ext_t *resource = routine_execution->resource;
+
     if(status > 0){
         rp_unserialize(&result, buf->base, status);
         rp_resolve_promise(&routine_execution->promise, &result);
         ZVAL_PTR_DTOR(&result);
+//        fprintf(stderr, "%p %d result read cb\n", routine_execution, getpid());
     }
-    rp_free(buf->base);
 
-    fprintf(stderr, "r1:\n");
+    rp_free(buf->base);
     uv_close((uv_handle_t *) &routine_execution->pipe, (uv_close_cb) routine_result_close_cb);
-    fprintf(stderr, "r2:\n");
 }
 
 static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zval *args)
@@ -97,13 +102,14 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     routine_execution->resource = resource;
     uv_pipe_init(&main_loop, &routine_execution->pipe, 0);
     uv_pipe_open(&routine_execution->pipe, fd[1]);
-    routine_execution->fd = fd[1];
-    zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->fd, routine_execution);
+    routine_execution->index = routine_execution_index++;
+    zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->index, routine_execution);
     uv_read_start((uv_stream_t *) &routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
 
     pipe = rp_malloc(sizeof(uv_pipe_t));
     uv_pipe_init(&main_loop, pipe, 0);
     uv_pipe_open(pipe, fd[0]);
+//    fprintf(stderr, "%p %d %p reactor send\n", pipe, getpid(), routine_execution);
     rp_reactor_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
     return routine_execution;
 }
@@ -177,10 +183,23 @@ static void close_cb(rp_stream_t *client)
     rp_free(client);
 }
 
+static void routine_result_shutdown_cb(uv_shutdown_t* req, int status)
+{
+    rp_free(req);
+//    fprintf(stderr, "%p %d result send shutdown cb\n", routine_execution, getpid());
+    uv_close((uv_handle_t *) req->handle, (uv_close_cb) close_cb);
+}
+
+static void routine_result_write_cb(rp_write_req_t *req, int status)
+{
+    rp_free(req);
+}
+
 static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data, size_t ipc_data_len)
 {
     zval param, retval, serialized;
     rp_write_req_t *req;
+    uv_shutdown_t *shutdown_req;
     rp_routine_ext_t *resource = FETCH_RESOURCE(server, rp_routine_ext_t);
     if(!resource->execution_fci.fcc.initialized) {
         zend_fcall_info_init(&resource->execution, 0, FCI_PARSE_PARAMETERS_CC(resource->execution_fci), NULL, NULL);
@@ -199,17 +218,13 @@ static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data
 
     req = rp_make_write_req(Z_STRVAL(serialized), Z_STRLEN(serialized));
     uv_write((uv_write_t *) req, (uv_stream_t *) client, &req->buf, 1, (uv_write_cb) routine_result_write_cb);
+
+    shutdown_req = rp_malloc(sizeof(uv_shutdown_t));
+    uv_shutdown(shutdown_req, (uv_stream_t *) client, (uv_shutdown_cb) routine_result_shutdown_cb);
+
     ZVAL_PTR_DTOR(&param);
     ZVAL_PTR_DTOR(&retval);
     ZVAL_PTR_DTOR(&serialized);
-}
-
-static void routine_result_write_cb(rp_write_req_t *req, int status)
-{
-    fprintf(stderr, "r3:\n");
-    uv_close((uv_handle_t *) req->uv_write.handle, (uv_close_cb) close_cb);
-    fprintf(stderr, "r4:\n");
-    rp_free(req);
 }
 
 static void rp_serialize(zval *serialized, zval *param)

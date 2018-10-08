@@ -25,7 +25,7 @@ typedef struct write_req_s{
 
 typedef struct {
     uv_pipe_t pipe;
-    int fd;
+    zend_ulong index;
     zval promise;
     rp_routine_ext_t *resource;
 } routine_execution_t;
