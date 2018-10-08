@@ -193,14 +193,14 @@ rp_reactor_t *rp_reactor_add()
 
 void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc)
 {
-    reactor_send_req_t *send_req = rp_malloc(sizeof(reactor_send_req_t) + data_len - 1);
+    reactor_send_req_t *send_req = rp_malloc(sizeof(reactor_send_req_t) + data_len);
     send_req->close_cb = close_cb;
     send_req->client = client;
     send_req->reactor_ext.reactor = reactor;
     send_req->reactor_ext.data_len = data_len;
     memcpy(&send_req->reactor_ext.data, data, data_len);
     send_req->buf.base = (char *) &send_req->reactor_ext;
-    send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len - 1;
+    send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
     uv_write2((uv_write_t *) send_req, ipc, &send_req->buf, 1, client, (uv_write_cb) write2_cb);
 }
 

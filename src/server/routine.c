@@ -9,6 +9,11 @@ DECLARE_FUNCTION_ENTRY(respond_server_routine) =
 };
 
 static zend_ulong routine_execution_index = 0;
+static fcall_info_t serialize_fci;
+static zend_bool serialize_fci_inited = 0;
+static fcall_info_t unserialize_fci;
+static zend_bool unserialize_fci_inited = 0;
+
 static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
 static void free_respond_server_routine_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
@@ -230,21 +235,29 @@ static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data
 static void rp_serialize(zval *serialized, zval *param)
 {
     zval fn;
-    fcall_info_t serialize_fci;
-    ZVAL_STRING(&fn, "serialize");
-    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(serialize_fci), NULL, NULL);
-    ZVAL_PTR_DTOR(&fn);
+
+    if(!serialize_fci_inited) {
+        ZVAL_STRING(&fn, "serialize");
+        zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(serialize_fci), NULL, NULL);
+        ZVAL_PTR_DTOR(&fn);
+        serialize_fci_inited = 1;
+    }
+
     fci_call_function(&serialize_fci, serialized, 1, param);
 }
 
 static void rp_unserialize(zval *retval, char *serialized, size_t serialized_len)
 {
     zval fn, param;
-    fcall_info_t unserialize_fci;
-    ZVAL_STRING(&fn, "unserialize");
+
+    if(!unserialize_fci_inited) {
+        ZVAL_STRING(&fn, "unserialize");
+        zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(unserialize_fci), NULL, NULL);
+        ZVAL_PTR_DTOR(&fn);
+        unserialize_fci_inited = 1;
+    }
+
     ZVAL_STRINGL(&param, serialized, serialized_len);
-    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(unserialize_fci), NULL, NULL);
-    ZVAL_PTR_DTOR(&fn);
-    ZVAL_PTR_DTOR(&param);
     fci_call_function(&unserialize_fci, retval, 1, &param);
+    ZVAL_PTR_DTOR(&param);
 }
