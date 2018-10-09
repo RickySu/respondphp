@@ -9,6 +9,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
     zval new_array, *array;
     fcall_info_t *fci;
     ht_counter_t *ht_counter;
+    zend_ulong index;
 
     if((array = zend_hash_str_find(Z_ARRVAL_P(&event_hook->hook), event, event_len)) == NULL) {
         array_init(&new_array);
@@ -16,8 +17,9 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
         array = &new_array;
     }
 
+    index = zend_hash_next_free_element(Z_ARRVAL_P(array));
     zval_add_ref(hook);
-    add_next_index_zval(array, hook);
+    add_index_zval(array, index, hook);
 
     if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {
         ht_counter = rp_calloc(1, sizeof(ht_counter_t));
@@ -31,7 +33,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
     fci =rp_malloc(sizeof(fcall_info_t));
     zend_fcall_info_init(hook, 0, &fci->fci, &fci->fcc, NULL, NULL);
 
-    zend_hash_index_add_ptr(&ht_counter->ht, ht_counter->n++, fci);
+    zend_hash_index_add_ptr(&ht_counter->ht, index, fci);
 }
 
 void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook)

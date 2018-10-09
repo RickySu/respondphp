@@ -107,7 +107,7 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     routine_execution->resource = resource;
     uv_pipe_init(&main_loop, &routine_execution->pipe, 0);
     uv_pipe_open(&routine_execution->pipe, fd[1]);
-    routine_execution->index = routine_execution_index++;
+    routine_execution->index = zend_hash_next_free_element(&resource->routine_executions);
     zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->index, routine_execution);
     uv_read_start((uv_stream_t *) &routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
 
