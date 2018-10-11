@@ -70,31 +70,46 @@ static void rp_do_init_worker_manager()
     rp_set_task_type(WORKER);
 }
 
-int rp_init_worker_manager()
+void rp_init_worker_manager(int *worker_ipc_fd, int *worker_data_fd)
 {
-    int fd[2];
+    int ipc_fd[2], data_fd[2];
     int pid;
 
     if(rp_get_task_type() != ACTOR){
-        return 0;
+        *worker_ipc_fd = 0;
+        *worker_data_fd = 0;
+        return;
     }
 
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fd) < 0) {
-        return -1;
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, ipc_fd) < 0) {
+        *worker_ipc_fd = -1;
+        return;
+    }
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, data_fd) < 0) {
+        *worker_data_fd = -1;
+        return;
     }
 
     pid = fork();
     
     if(pid < 0){
-        return pid;
+        *worker_ipc_fd = pid;
+        *worker_data_fd = pid;
+        return;
     }
     
     if(pid > 0){ // ACTOR
-        close(fd[0]);
-        return fd[1];
+        close(ipc_fd[0]);
+        close(data_fd[0]);
+        *worker_ipc_fd = ipc_fd[1];
+        *worker_data_fd = data_fd[1];
+        return;
     }
     
-    close(fd[1]);
+    close(ipc_fd[1]);
+    close(data_fd[1]);
     rp_do_init_worker_manager();
-    return fd[0];
+    *worker_ipc_fd = ipc_fd[0];
+    *worker_data_fd = data_fd[0];
 }

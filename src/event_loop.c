@@ -45,9 +45,10 @@ static void free_respond_event_loop_resource(zend_object *object)
 
 PHP_METHOD(respond_event_loop, run)
 {
-    int worker_fd, routine_fd;
+    int worker_ipc_fd, routine_ipc_fd, worker_data_fd;
     long option = RUN_DEFAULT;
     uv_run_mode mode;
+
     if(zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &option) == FAILURE) {
         return;
     }    
@@ -66,14 +67,14 @@ PHP_METHOD(respond_event_loop, run)
             mode = UV_RUN_DEFAULT;        
     }
 
-    routine_fd = rp_init_routine_manager();
-    worker_fd = rp_init_worker_manager();
+    rp_init_routine_manager(&routine_ipc_fd);
+    rp_init_worker_manager(&worker_ipc_fd, &worker_data_fd);
 
-    if(worker_fd < 0 || routine_fd < 0) {
+    if(worker_ipc_fd < 0 || routine_ipc_fd < 0) {
         return;
     }
 
-    rp_init_reactor(worker_fd, routine_fd);
+    rp_init_reactor(worker_ipc_fd, worker_data_fd, routine_ipc_fd);
     uv_run(&main_loop, mode);
 }
 

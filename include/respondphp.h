@@ -36,6 +36,7 @@
 
 extern uv_loop_t main_loop;
 extern uv_pipe_t ipc_pipe;
+extern uv_pipe_t data_pipe;
 extern uv_pipe_t routine_pipe;
 extern zend_module_entry respondphp_module_entry;
 
@@ -47,6 +48,7 @@ PHP_RSHUTDOWN_FUNCTION(respondphp);
 
 DECLARE_CLASS_ENTRY(respond_event_loop);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
+DECLARE_CLASS_ENTRY(respond_server_udp);
 DECLARE_CLASS_ENTRY(respond_server_pipe);
 DECLARE_CLASS_ENTRY(respond_server_routine);
 DECLARE_CLASS_ENTRY(respond_connection_connection);
@@ -55,16 +57,17 @@ DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connection_interface);
 
-int rp_init_routine_manager();
-int rp_init_worker_manager();
-int rp_init_reactor(int worker_fd, int routine_fd);
+void rp_init_routine_manager(int *routine_fd);
+void rp_init_worker_manager(int *worker_fd, int *worker_data_fd);
+int rp_init_reactor(int worker_ipc_fd, int work_data_fd, int routine_ipc_fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
 rp_reactor_t *rp_reactor_add();
 rp_reactor_t *rp_reactor_get_head();
 void rp_reactor_destroy();
-void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
-#define rp_reactor_send(reactor, client, close_cb) rp_reactor_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
+int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data, size_t data_len);
+int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
+#define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_factory(rp_stream_t *client, zval *connection);
 void rp_make_promise_object(zval *promise);
 void rp_resolve_promise(zval *promise, zval *result);
@@ -77,6 +80,24 @@ static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t d
     req->buf.len = data_len;
     memcpy(req->buf.base, data, data_len);
     return req;
+}
+
+static zend_always_inline void sock_addr(struct sockaddr *addr, char *ip_name, size_t ip_len, u_int16_t *port) {
+    struct sockaddr_in addr_in;
+    struct sockaddr_in6 addr_in6;
+
+    if(addr->sa_family == AF_INET) {
+        addr_in = *((struct sockaddr_in *) addr);
+        *port = ntohs(addr_in.sin_port);
+        memcpy(&addr_in, addr, sizeof(struct sockaddr));
+        uv_ip4_name(&addr_in, ip_name, ip_len);
+        return;
+    }
+
+    addr_in6 = *((struct sockaddr_in6 *) addr);
+    *port = ntohs(addr_in6.sin6_port);
+    memcpy(&addr_in6, addr, sizeof(struct sockaddr));
+    uv_ip6_name(&addr_in6, ip_name, ip_len);
 }
 
 #ifdef HAVE_PR_SET_PDEATHSIG

@@ -73,31 +73,35 @@ static void rp_do_init_routine_manager()
     rp_set_task_type(ROUTINE);
 }
 
-int rp_init_routine_manager()
+void rp_init_routine_manager(int *routine_fd)
 {
     int fd[2];
     int pid;
 
     if(rp_get_task_type() != ACTOR) {
-        return 0;
+        *routine_fd = 0;
+        return;
     }
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, fd) < 0) {
-        return -1;
+        *routine_fd = -1;
+        return;
     }
 
     pid = fork();
 
     if(pid < 0){
-        return pid;
+        *routine_fd = pid;
+        return;
     }
 
     if(pid > 0){ // ACTOR
         close(fd[0]);
-        return fd[1];
+        *routine_fd = fd[1];
+        return;
     }
 
     close(fd[1]);
     rp_do_init_routine_manager();
-    return fd[0];
+    *routine_fd = fd[0];
 }

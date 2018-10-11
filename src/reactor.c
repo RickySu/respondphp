@@ -8,11 +8,13 @@ uv_signal_t signal_handle;
 static rp_reactor_t *rp_reactor_head = NULL;
 static rp_reactor_t *rp_reactor_tail = NULL;
 
-static void write2_cb(reactor_send_req_t *req, int status);
-static void rp_init_actor_server();
-static int rp_init_worker_server(int fd);
-static int rp_init_routine_server(int fd);
-static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
+static void write2_cb(reactor_ipc_send_req_t *req, int status);
+static void write_cb(reactor_ipc_send_req_t *req, int status);
+static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd);
+static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd);
+static int rp_init_routine_server(int routine_ipc_fd);
+static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
+static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void close_cb(uv_handle_t *handle);
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
@@ -54,22 +56,39 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
     buf->len = suggested_size;
 }
 
-static int rp_init_worker_server(int fd)
+static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
 {
     int ret;
 
-    if((ret = uv_pipe_init(&main_loop, &ipc_pipe, 1)) != 0){
+    if((ret = uv_pipe_init(&main_loop, &ipc_pipe, 1)) < 0){
         return ret;
     }
 
-    if((ret = uv_pipe_open(&ipc_pipe, fd)) != 0){
+    if((ret = uv_pipe_open(&ipc_pipe, worker_ipc_fd)) < 0){
         return ret;
     }
 
-    return uv_read_start((uv_stream_t*) &ipc_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
+    if((ret = uv_read_start((uv_stream_t*) &ipc_pipe, alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_pipe_init(&main_loop, &data_pipe, 1)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_pipe_open(&data_pipe, worker_data_fd)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_read_start((uv_stream_t*) &data_pipe, alloc_buffer, (uv_read_cb) rp_reactor_data_receive)) < 0){
+        return ret;
+    }
+
+    fprintf(stderr, "data pipe: %d %d\n", getpid(), ret);
+    return ret;
 }
 
-static int rp_init_routine_server(int fd)
+static int rp_init_routine_server(int routine_ipc_fd)
 {
     int ret;
 
@@ -77,11 +96,11 @@ static int rp_init_routine_server(int fd)
         return ret;
     }
 
-    if((ret = uv_pipe_open(&routine_pipe, fd)) != 0){
+    if((ret = uv_pipe_open(&routine_pipe, routine_ipc_fd)) != 0){
         return ret;
     }
 
-    return uv_read_start((uv_stream_t*) &routine_pipe, alloc_buffer, (uv_read_cb) rp_reactor_receive);
+    return uv_read_start((uv_stream_t*) &routine_pipe, alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive);
 }
 
 static void close_cb(uv_handle_t* handle)
@@ -89,7 +108,7 @@ static void close_cb(uv_handle_t* handle)
     rp_free(handle);
 }
 
-static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
+static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 {
     rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
     rp_stream_t *client;
@@ -99,63 +118,92 @@ static void rp_reactor_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
         return;
     }
 
+    fprintf(stderr, "reactor ipc recv: %d %p\n", status, reactor_ext->reactor);
+
     if((client = rp_accept_client(pipe, reactor_ext->reactor)) != NULL) {
-        reactor_ext->reactor->accepted_cb(reactor_ext->reactor->server, client, reactor_ext->data, reactor_ext->data_len);
+        reactor_ext->reactor->cb.stream.accepted(reactor_ext->reactor->server, client, reactor_ext->data, reactor_ext->data_len);
     }
 
     rp_free(buf->base);
 }
 
-static void write2_cb(reactor_send_req_t *req, int status)
+static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
+{
+    rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
+    rp_reactor_data_send_req_t *req;
+    if(status > 0){
+        req = (rp_reactor_data_send_req_t *) reactor_ext->data;
+        RP_ASSERT(req->type == RP_DATA);
+        fprintf(stderr, "data recv %d %.*s\n", getpid(), req->payload.recv.data_len, req->payload.recv.data);
+        reactor_ext->reactor->cb.dgram.data_recv(reactor_ext->reactor->server, req->payload.recv.data, req->payload.recv.data_len, &req->payload.recv.addr, req->payload.recv.flags);
+    }
+    rp_free(buf->base);
+}
+
+static void write2_cb(reactor_ipc_send_req_t *req, int status)
 {
     uv_close((uv_handle_t *) req->client, (uv_close_cb) req->close_cb);
     rp_free(req);
 }
 
-static void rp_init_actor_server()
+static void write_cb(reactor_ipc_send_req_t *req, int status)
+{
+    rp_free(req);
+}
+
+static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
 {
     rp_reactor_t *reactor = rp_reactor_get_head();
+
+    uv_pipe_init(&main_loop, &ipc_pipe, 1);
+    uv_pipe_init(&main_loop, &data_pipe, 0);
+    uv_pipe_open(&ipc_pipe, worker_ipc_fd);
+    uv_pipe_open(&data_pipe, worker_data_fd);
+    uv_read_start((uv_stream_t*) &data_pipe, alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
 
     while(reactor) {
         switch(reactor->type) {
             case RP_TCP:
                 uv_tcp_init(&main_loop, &reactor->handler.tcp);
                 uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr*) &reactor->addr, 0);
-                uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->connection_cb);
+                uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->cb.stream.connection);
+                break;
+            case RP_UDP:
+                uv_udp_init(&main_loop, &reactor->handler.udp);
+                uv_udp_bind(&reactor->handler.udp, (const struct sockaddr*) &reactor->addr, 0);
+                uv_udp_recv_start(&reactor->handler.udp, alloc_buffer, reactor->cb.dgram.recv);
                 break;
             case RP_PIPE:
                 uv_pipe_init(&main_loop, &reactor->handler.pipe, 0);
                 uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path);
-                uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->connection_cb);
+                uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->cb.stream.connection);
                 break;
             default:
                 break;
         }
-        reactor = reactor->next;        
+        reactor = reactor->next;
     }
 }
 
-int rp_init_reactor(int worker_fd, int routine_fd)
+int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
 {
     int ret = 0;
     uv_loop_init(&main_loop);
     switch(rp_get_task_type()) {
         case ACTOR:
-            uv_pipe_init(&main_loop, &ipc_pipe, 1);
-            ret = uv_pipe_open(&ipc_pipe, worker_fd);
             rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
-            rp_init_actor_server();
+            rp_init_actor_server(worker_ipc_fd, worker_data_fd);
             break;
         case WORKER:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
-            ret = rp_init_worker_server(worker_fd);
+            rp_init_worker_server(worker_ipc_fd, worker_data_fd);
             uv_pipe_init(&main_loop, &routine_pipe, 1);
-            uv_pipe_open(&routine_pipe, routine_fd);
+            uv_pipe_open(&routine_pipe, routine_ipc_fd);
             fprintf(stderr, "worker: %d\n", getpid());
             break;            
         case ROUTINE:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
-            ret = rp_init_routine_server(routine_fd);
+            rp_init_routine_server(routine_ipc_fd);
             break;
         case WORKER_MANAGER:
             break;
@@ -191,9 +239,22 @@ rp_reactor_t *rp_reactor_add()
     return reactor;
 }
 
-void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc)
+int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data, size_t data_len)
 {
-    reactor_send_req_t *send_req = rp_malloc(sizeof(reactor_send_req_t) + data_len);
+    reactor_data_send_req_t *send_req = rp_malloc(sizeof(reactor_data_send_req_t) + data_len);
+    send_req->close_cb = close_cb;
+    send_req->reactor_ext.reactor = reactor;
+    send_req->reactor_ext.data_len = data_len;
+    memcpy(&send_req->reactor_ext.data, data, data_len);
+    send_req->buf.base = (char *) &send_req->reactor_ext;
+    send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
+    fprintf(stderr, "data send: %.*s\n", data_len, data);
+    return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) write_cb);
+}
+
+int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc)
+{
+    reactor_ipc_send_req_t *send_req = rp_malloc(sizeof(reactor_ipc_send_req_t) + data_len);
     send_req->close_cb = close_cb;
     send_req->client = client;
     send_req->reactor_ext.reactor = reactor;
@@ -201,7 +262,7 @@ void rp_reactor_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb 
     memcpy(&send_req->reactor_ext.data, data, data_len);
     send_req->buf.base = (char *) &send_req->reactor_ext;
     send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
-    uv_write2((uv_write_t *) send_req, ipc, &send_req->buf, 1, client, (uv_write_cb) write2_cb);
+    return uv_write2((uv_write_t *) send_req, ipc, &send_req->buf, 1, client, (uv_write_cb) write2_cb);
 }
 
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum)

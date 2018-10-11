@@ -78,6 +78,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/reactor.c
     src/routine_manager.c
     src/worker_manager.c
+    src/server/udp.c
     src/server/tcp.c
     src/server/pipe.c
     src/server/routine.c

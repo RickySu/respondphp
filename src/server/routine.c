@@ -115,7 +115,7 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     uv_pipe_init(&main_loop, pipe, 0);
     uv_pipe_open(pipe, fd[0]);
 //    fprintf(stderr, "%p %d %p reactor send\n", pipe, getpid(), routine_execution);
-    rp_reactor_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
+    rp_reactor_ipc_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
     return routine_execution;
 }
 
@@ -151,7 +151,7 @@ PHP_METHOD(respond_server_routine, __construct)
 
     reactor = rp_reactor_add();
     reactor->type = RP_ROUTINE;
-    reactor->accepted_cb = accepted_cb;
+    reactor->cb.stream.accepted = accepted_cb;
     reactor->server = &resource->zo;
     resource->reactor = reactor;
     ZVAL_COPY_VALUE(&resource->execution, execution);

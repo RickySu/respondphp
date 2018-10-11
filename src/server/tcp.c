@@ -36,7 +36,7 @@ static void connection_cb(rp_reactor_t *reactor, int status)
     uv_tcp_init(&main_loop, client);
     
     if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
-        rp_reactor_send(reactor, (uv_stream_t *) client, client_accept_close_cb);
+        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, client_accept_close_cb);
         return;
     }
     
@@ -99,8 +99,8 @@ PHP_METHOD(respond_server_tcp, __construct)
     }
 
     reactor->type = RP_TCP;
-    reactor->connection_cb = (rp_connection_cb) connection_cb;
-    reactor->accepted_cb = (rp_accepted_cb) accepted_cb;
+    reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
+    reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
     reactor->server = &resource->zo;
     resource->reactor = reactor;
 }

@@ -7,6 +7,13 @@ typedef struct {
     uv_stream_t *client;
     uv_buf_t buf;
     rp_reactor_ext_t reactor_ext;
-} reactor_send_req_t;
+} reactor_ipc_send_req_t;
+
+typedef struct {
+    uv_write_t write_req;
+    uv_close_cb close_cb;
+    uv_buf_t buf;
+    rp_reactor_ext_t reactor_ext;
+} reactor_data_send_req_t;
 
 #endif
