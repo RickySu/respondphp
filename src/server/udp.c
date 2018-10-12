@@ -3,12 +3,13 @@
 
 static zend_object *create_respond_server_udp_resource(zend_class_entry *class_type);
 static void free_respond_server_udp_resource(zend_object *object);
-static void client_accept_close_cb(uv_handle_t* handle);
+static void data_send_release_cb(uv_handle_t* handle);
+static void send_cb(rp_reactor_t *reactor, const char *data, size_t data_len, const struct sockaddr *addr);
 static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
 static void data_recv_cb(zend_object *server, const char *data, size_t data_len, const struct sockaddr *addr, unsigned flags);
 static void releaseResource(rp_udp_ext_t *resource);
 
-static void client_accept_close_cb(uv_handle_t* handle)
+static void data_send_release_cb(uv_handle_t* handle)
 {
     rp_free(handle);
 }
@@ -26,19 +27,37 @@ static void releaseResource(rp_udp_ext_t *resource)
 {
 }
 
+static void send_cb(rp_reactor_t *reactor, const char *data, size_t data_len, const struct sockaddr *addr)
+{
+    char addr_str[INET6_ADDRSTRLEN];
+    uint16_t port;
+    rp_write_req_t *req = rp_make_write_req(data, data_len);
+    sock_addr(addr, addr_str, INET6_ADDRSTRLEN, &port);
+    int ret = uv_udp_send(req, &reactor->handler, &req->buf, 1, addr, data_send_release_cb);
+    fprintf(stderr, "req send start (%d) %s %p %.*s %s\n", ret, uv_strerror(ret), req, req->buf.len, req->buf.base, addr_str);
+}
+
 static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
 {
+    size_t sockaddr_size;
+
     rp_reactor_data_send_req_t *req;
     size_t size_of_req_data;
     if (nread > 0) {
+        if(addr->sa_family == AF_INET) {
+            sockaddr_size = sizeof(struct sockaddr_in);
+        }
+        else {
+            sockaddr_size = sizeof(struct sockaddr_in6);
+        }
         size_of_req_data = sizeof(rp_reactor_data_send_req_t) + nread;
         req = rp_malloc(size_of_req_data);
-        req->type = RP_DATA;
+        req->type = RP_RECV;
         req->payload.recv.flags = flags;
-        memcpy(&req->payload.recv.addr, addr, sizeof(const struct sockaddr));
+        memcpy(&req->payload.recv.addr, addr, sockaddr_size);
         req->payload.recv.data_len = nread;
         memcpy(&req->payload.recv.data, buf->base, nread);
-        int ret = rp_reactor_data_send(reactor, client_accept_close_cb, req, size_of_req_data);
+        int ret = rp_reactor_data_send(reactor, data_send_release_cb, req, size_of_req_data);
         fprintf(stderr, "recv data send %p %d %s\n", reactor, ret, uv_strerror(ret));
         rp_free(req);
     }
@@ -50,10 +69,16 @@ static void data_recv_cb(zend_object *server, const char *data, size_t data_len,
     rp_udp_ext_t *resource = FETCH_RESOURCE(server, rp_udp_ext_t);
     char addr_str[40];
     uint16_t port;
-
+    zval param[4];
+fprintf(stderr, "recv: %d %d %d\n", addr->sa_family, AF_INET, AF_INET6);
     sock_addr(addr, addr_str, sizeof(addr_str), &port);
-    snprintf(&addr_str[strlen(addr_str)], 6, ":%d", (int)port);
-    fprintf(stderr, "recv data recv %d from %s:%.*s\n", getpid(), addr_str, data_len, data);
+    ZVAL_OBJ(&param[0], server);
+    ZVAL_STRING(&param[1], addr_str);
+    ZVAL_LONG(&param[2], port);
+    ZVAL_STRINGL(&param[3], data, data_len);
+    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("recv"), 4, param);
+    ZVAL_PTR_DTOR(&param[1]);
+    ZVAL_PTR_DTOR(&param[3]);
 }
 
 static zend_object *create_respond_server_udp_resource(zend_class_entry *ce)
@@ -78,44 +103,73 @@ static void free_respond_server_udp_resource(zend_object *object)
 
 PHP_METHOD(respond_server_udp, __construct)
 {
-    long ret, port;
+    long port;
     zval *self = getThis();
-    const char *host = NULL;
-    size_t host_len;
-    char cstr_host[40];
+    zend_string *host;
 
     rp_reactor_t *reactor;
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sl", &host, &host_len, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
         return;
     }
     
-    if(host_len == 0 || host_len >= 30) {
-        return;
-    }
-
-    memcpy(cstr_host, host, host_len);
-    cstr_host[host_len] = '\0';
-
     reactor = rp_reactor_add();
 
-    if(strchr(cstr_host, ':') == NULL) {
-        if ((ret = uv_ip4_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
+    if(memchr(host->val, ':', host->len) == NULL) {
+        if (uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr) != 0) {
             return;
         }
     }
     else {
-        if ((ret = uv_ip6_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
+        if (uv_ip6_addr(host->val, port & 0xffff, &reactor->addr.sockaddr6) != 0) {
             return;
         }
     }
 
     reactor->type = RP_UDP;
     reactor->cb.dgram.recv = (rp_recv_cb) recv_cb;
+    reactor->cb.dgram.send = (rp_send_cb) send_cb;
     reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_recv_cb;
     reactor->server = &resource->zo;
     resource->reactor = reactor;
+}
+
+PHP_METHOD(respond_server_udp, send)
+{
+    zval *self = getThis();
+    zend_string *host, *data;
+    long port;
+    rp_reactor_addr_t addr;
+    rp_reactor_data_send_req_t *req;
+    size_t size_of_req_data;
+
+    rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "SlS", &host, &port, &data)) {
+        return;
+    }
+
+    if(memchr(host->val, ':', host->len) == NULL) {
+        if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
+            return;
+        }
+    }
+    else {
+        if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
+            return;
+        }
+    }
+
+    size_of_req_data = sizeof(rp_reactor_data_send_req_t) + data->len;
+    req = rp_malloc(size_of_req_data);
+    req->type = RP_SEND;
+    memcpy(&req->payload.send.addr, &addr, sizeof(rp_reactor_addr_t));
+    req->payload.send.data_len = data->len;
+    memcpy(&req->payload.send.data, data->val, data->len);
+    rp_reactor_data_send(resource->reactor, data_send_release_cb, req, size_of_req_data);
+//        fprintf(stderr, "recv data send %p %d %s\n", reactor, ret, uv_strerror(ret));
+    rp_free(req);
 }
 
 PHP_METHOD(respond_server_udp, close)

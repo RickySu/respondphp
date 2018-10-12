@@ -4,11 +4,11 @@
 void rp_socket_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address)
 {
     struct sockaddr addr;
-    int addrlen = sizeof(struct sockaddr_in);
-    char addr_str[40];
+    int addrlen = INET6_ADDRSTRLEN + 6;
+    char addr_str[INET6_ADDRSTRLEN + 6];
     uint16_t port;
 
-    if(uv_tcp_getsockname(handle, &addr, &addrlen)){
+    if(uv_tcp_getpeername(handle, &addr, &addrlen)){
         ZVAL_NULL(address);
         return;
     }
@@ -21,11 +21,11 @@ void rp_socket_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address)
 void rp_socket_connection_tcp_getLocalAddress(uv_tcp_t *handle, zval *address)
 {
     struct sockaddr addr;
-    int addrlen = sizeof(struct sockaddr_in);
-    char addr_str[40];
+    int addrlen = INET6_ADDRSTRLEN + 6;
+    char addr_str[INET6_ADDRSTRLEN + 6];
     uint16_t port;
 
-    if(uv_tcp_getpeername(handle, &addr, &addrlen)){
+    if(uv_tcp_getsockname(handle, &addr, &addrlen)){
         ZVAL_NULL(address);
         return;
     }

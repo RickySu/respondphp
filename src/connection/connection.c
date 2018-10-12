@@ -38,7 +38,7 @@ static zend_always_inline void connection_close(rp_connection_ext_t *resource)
 static void connection_write_cb(rp_write_req_t *req, int status)
 {
     zval param[2];
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) req->uv_write.handle)->connection_zo, rp_connection_ext_t);
+    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) req->req.uv_write.handle)->connection_zo, rp_connection_ext_t);
     rp_free(req);
 //    fprintf(stderr, "write cb: %d %p\n", getpid(), resource);
     ZVAL_OBJ(&param[0], &resource->zo);

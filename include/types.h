@@ -7,15 +7,17 @@
 
 struct rp_reactor_s;
 struct rp_stream_s;
+struct rp_reactor_s;
 
 typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_type_t;
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
-typedef enum {RP_DATA} rp_reactor_data_send_type_t;
-
+typedef enum {RP_RECV, RP_SEND} rp_reactor_data_send_type_t;
+typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, const char *data, size_t data_len, const struct sockaddr *addr);
 typedef void (*rp_data_recv_cb)(zend_object *server, const char *data, size_t data_len, const struct sockaddr *addr, unsigned flags);
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
 typedef uv_connection_cb rp_connection_cb;
 typedef uv_udp_recv_cb rp_recv_cb;
+
 
 typedef union {
     uv_tcp_t  tcp;
@@ -32,6 +34,7 @@ typedef union {
 typedef struct {
     rp_recv_cb             recv;
     rp_data_recv_cb        data_recv;
+    rp_send_cb             send;
 } rp_dgram_cb_t;
 
 typedef struct {
@@ -69,7 +72,10 @@ typedef struct rp_stream_s{
 } rp_stream_t;
 
 typedef struct {
-    uv_write_t uv_write;
+    union {
+        uv_write_t uv_write;
+        uv_udp_send_t uv_send;
+    } req;
     uv_buf_t buf;
     char data[0];
 } rp_write_req_t;
@@ -82,9 +88,16 @@ typedef struct {
 } rp_reactor_data_send_req_payload_recv_t;
 
 typedef struct {
+    rp_reactor_addr_t addr;
+    size_t data_len;
+    char data[0];
+} rp_reactor_data_send_req_payload_send_t;
+
+typedef struct {
     rp_reactor_data_send_type_t type;
     union {
         rp_reactor_data_send_req_payload_recv_t recv;
+        rp_reactor_data_send_req_payload_send_t send;
     } payload;
 } rp_reactor_data_send_req_t;
 #endif

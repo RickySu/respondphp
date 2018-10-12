@@ -82,22 +82,16 @@ static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t d
     return req;
 }
 
-static zend_always_inline void sock_addr(struct sockaddr *addr, char *ip_name, size_t ip_len, u_int16_t *port) {
-    struct sockaddr_in addr_in;
-    struct sockaddr_in6 addr_in6;
+static zend_always_inline void sock_addr(struct sockaddr *sa, char *ip_name, size_t ip_len, u_int16_t *port) {
 
-    if(addr->sa_family == AF_INET) {
-        addr_in = *((struct sockaddr_in *) addr);
-        *port = ntohs(addr_in.sin_port);
-        memcpy(&addr_in, addr, sizeof(struct sockaddr));
-        uv_ip4_name(&addr_in, ip_name, ip_len);
+    if(sa->sa_family == AF_INET) {
+        inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), ip_name, ip_len),
+        *port = ntohs(((struct sockaddr_in *)sa)->sin_port);
         return;
     }
 
-    addr_in6 = *((struct sockaddr_in6 *) addr);
-    *port = ntohs(addr_in6.sin6_port);
-    memcpy(&addr_in6, addr, sizeof(struct sockaddr));
-    uv_ip6_name(&addr_in6, ip_name, ip_len);
+    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), ip_name, ip_len),
+    *port = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
 }
 
 #ifdef HAVE_PR_SET_PDEATHSIG

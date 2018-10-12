@@ -7,6 +7,13 @@ ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_udp, __construct), 0)
     ZEND_ARG_INFO(0, port)
 ZEND_END_ARG_INFO()
 
+
+ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_udp, send), 0)
+    ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, port, IS_LONG, 0)
+    ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 typedef struct {
     uint flag;
     event_hook_t event_hook;
@@ -15,6 +22,7 @@ typedef struct {
 } rp_udp_ext_t;
 
 PHP_METHOD(respond_server_udp, close);
+PHP_METHOD(respond_server_udp, send);
 PHP_METHOD(respond_server_udp, __construct);
 
 TRAIT_PHP_METHOD(respond_server_udp, event_emitter);
@@ -22,6 +30,7 @@ TRAIT_FUNCTION_ARG_INFO(respond_server_udp, event_emitter);
 DECLARE_FUNCTION_ENTRY(respond_server_udp) =
 {
     PHP_ME(respond_server_udp, __construct, ARGINFO(respond_server_udp, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+    PHP_ME(respond_server_udp, send, ARGINFO(respond_server_udp, send), ZEND_ACC_PUBLIC)
     PHP_ME(respond_server_udp, close, NULL, ZEND_ACC_PUBLIC)
     TRAIT_FUNCTION_ENTRY_ME(respond_server_udp, event_emitter)
     PHP_FE_END

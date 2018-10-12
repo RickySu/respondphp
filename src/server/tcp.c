@@ -67,33 +67,24 @@ PHP_METHOD(respond_server_tcp, __construct)
 {
     long ret, port;
     zval *self = getThis();
-    const char *host = NULL;
-    size_t host_len;
-    char cstr_host[40];
+    zend_string *host;
 
     rp_reactor_t *reactor;
     rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sl", &host, &host_len, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
         return;
     }
-    
-    if(host_len == 0 || host_len >= 30) {
-        return;
-    }
-
-    memcpy(cstr_host, host, host_len);
-    cstr_host[host_len] = '\0';
 
     reactor = rp_reactor_add();
 
-    if(strchr(cstr_host, ':') == NULL) {
-        if ((ret = uv_ip4_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
+    if(memchr(host->val, ':', host->len) == NULL) {
+        if ((ret = uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
             return;
         }
     }
     else {
-        if ((ret = uv_ip6_addr(cstr_host, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
+        if ((ret = uv_ip6_addr(host->val, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
             return;
         }
     }
