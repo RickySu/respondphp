@@ -7,6 +7,14 @@ static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_stream_t *client);
 static void releaseResource(rp_pipe_ext_t *resource);
+static void server_init(rp_reactor_t *reactor);
+
+static void server_init(rp_reactor_t *reactor)
+{
+    uv_pipe_init(&main_loop, &reactor->handler.pipe, 0);
+    uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path);
+    uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->cb.stream.connection);
+}
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
@@ -83,6 +91,7 @@ PHP_METHOD(respond_server_pipe, __construct)
     reactor = rp_reactor_add();
     reactor->addr.socket_path = rp_calloc(1, socket_path_len + 1);
     reactor->type = RP_PIPE;
+    reactor->server_init_cb = server_init;
     reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
     reactor->server = &resource->zo;

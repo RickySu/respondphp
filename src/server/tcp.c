@@ -7,6 +7,7 @@ static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_stream_t *client);
 static void releaseResource(rp_tcp_ext_t *resource);
+static void server_init(rp_reactor_t *reactor);
 
 static void client_accept_close_cb(uv_handle_t* handle)
 {
@@ -20,6 +21,17 @@ CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
     OBJECT_HANDLER(respond_server_tcp).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_tcp).free_obj = free_respond_server_tcp_resource;
     zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
+}
+
+static void server_init(rp_reactor_t *reactor)
+{
+    char addr_str[INET6_ADDRSTRLEN];
+    uint16_t port;
+    uv_tcp_init(&main_loop, &reactor->handler.tcp);
+    uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr *) &reactor->addr, 0);
+    uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->cb.stream.connection);
+    sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
+    fprintf(stderr, "tcp listen: %s:%d\n", addr_str, port);
 }
 
 static void releaseResource(rp_tcp_ext_t *resource)
@@ -90,6 +102,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     }
 
     reactor->type = RP_TCP;
+    reactor->server_init_cb = server_init;
     reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
     reactor->server = &resource->zo;

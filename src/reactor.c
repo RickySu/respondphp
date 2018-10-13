@@ -165,9 +165,6 @@ static void write_cb(reactor_ipc_send_req_t *req, int status)
 static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
 {
     rp_reactor_t *reactor = rp_reactor_get_head();
-    char addr_str[40];
-    uint16_t port;
-
     uv_pipe_init(&main_loop, &ipc_pipe, 1);
     uv_pipe_init(&main_loop, &data_pipe, 0);
     uv_pipe_open(&ipc_pipe, worker_ipc_fd);
@@ -175,26 +172,8 @@ static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
     uv_read_start((uv_stream_t*) &data_pipe, alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
 
     while(reactor) {
-        switch(reactor->type) {
-            case RP_TCP:
-                uv_tcp_init(&main_loop, &reactor->handler.tcp);
-                uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr *) &reactor->addr, 0);
-                uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->cb.stream.connection);
-                sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
-                fprintf(stderr, "tcp listen: %s:%d\n", addr_str, port);
-                break;
-            case RP_UDP:
-                uv_udp_init(&main_loop, &reactor->handler.udp);
-                uv_udp_bind(&reactor->handler.udp, (const struct sockaddr*) &reactor->addr, 0);
-                uv_udp_recv_start(&reactor->handler.udp, alloc_buffer, reactor->cb.dgram.recv);
-                break;
-            case RP_PIPE:
-                uv_pipe_init(&main_loop, &reactor->handler.pipe, 0);
-                uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path);
-                uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->cb.stream.connection);
-                break;
-            default:
-                break;
+        if(reactor->server_init_cb) {
+            reactor->server_init_cb(reactor);
         }
         reactor = reactor->next;
     }

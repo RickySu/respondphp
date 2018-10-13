@@ -8,6 +8,21 @@ static void send_cb(rp_reactor_t *reactor, const char *data, size_t data_len, co
 static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
 static void data_recv_cb(zend_object *server, const char *data, size_t data_len, const struct sockaddr *addr, unsigned flags);
 static void releaseResource(rp_udp_ext_t *resource);
+static void server_init(rp_reactor_t *reactor);
+static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
+
+static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
+{
+    buf->base = (char*) rp_malloc(suggested_size);
+    buf->len = suggested_size;
+}
+
+static void server_init(rp_reactor_t *reactor)
+{
+    uv_udp_init(&main_loop, &reactor->handler.udp);
+    uv_udp_bind(&reactor->handler.udp, (const struct sockaddr*) &reactor->addr, 0);
+    uv_udp_recv_start(&reactor->handler.udp, alloc_buffer, reactor->cb.dgram.recv);
+}
 
 static void data_send_release_cb(uv_handle_t* handle)
 {
@@ -128,6 +143,7 @@ PHP_METHOD(respond_server_udp, __construct)
     }
 
     reactor->type = RP_UDP;
+    reactor->server_init_cb = server_init;
     reactor->cb.dgram.recv = (rp_recv_cb) recv_cb;
     reactor->cb.dgram.send = (rp_send_cb) send_cb;
     reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_recv_cb;
