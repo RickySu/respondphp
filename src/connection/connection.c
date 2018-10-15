@@ -78,7 +78,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
     zval param[2];
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) stream)->connection_zo, rp_connection_ext_t);
-    zend_string *string = buf->base - XtOffsetOf(zend_string, val);
+    zend_string *string = (zend_string *)(buf->base - XtOffsetOf(zend_string, val));
     ZVAL_OBJ(&param[0], &resource->zo);
 //    fprintf(stderr, "%p %d %d recv\n", resource, getpid(), nread);
     if(nread > 0){
