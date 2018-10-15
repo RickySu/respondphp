@@ -15,7 +15,6 @@ static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd);
 static int rp_init_routine_server(int routine_ipc_fd);
 static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void close_cb(uv_handle_t *handle);
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
@@ -51,7 +50,7 @@ rp_reactor_t *rp_reactor_get_head()
     return rp_reactor_head;
 }
 
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
+void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
     buf->base = (char*) rp_malloc(suggested_size);
     buf->len = suggested_size;
@@ -69,7 +68,7 @@ static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
         return ret;
     }
 
-    if((ret = uv_read_start((uv_stream_t*) &ipc_pipe, alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive)) < 0){
+    if((ret = uv_read_start((uv_stream_t*) &ipc_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive)) < 0){
         return ret;
     }
 
@@ -81,7 +80,7 @@ static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
         return ret;
     }
 
-    if((ret = uv_read_start((uv_stream_t*) &data_pipe, alloc_buffer, (uv_read_cb) rp_reactor_data_receive)) < 0){
+    if((ret = uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive)) < 0){
         return ret;
     }
 
@@ -101,7 +100,7 @@ static int rp_init_routine_server(int routine_ipc_fd)
         return ret;
     }
 
-    return uv_read_start((uv_stream_t*) &routine_pipe, alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive);
+    return uv_read_start((uv_stream_t*) &routine_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive);
 }
 
 static void close_cb(uv_handle_t* handle)
@@ -169,7 +168,7 @@ static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
     uv_pipe_init(&main_loop, &data_pipe, 0);
     uv_pipe_open(&ipc_pipe, worker_ipc_fd);
     uv_pipe_open(&data_pipe, worker_data_fd);
-    uv_read_start((uv_stream_t*) &data_pipe, alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
+    uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
 
     while(reactor) {
         if(reactor->server_init_cb) {

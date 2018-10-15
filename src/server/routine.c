@@ -19,7 +19,6 @@ static void free_respond_server_routine_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
 static void close_cb(rp_stream_t *client);
 static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data, size_t ipc_data_len);
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf);
 static void routine_result_close_cb(routine_execution_t *routine_execution);
 static void routine_result_write_cb(rp_write_req_t *req, int status);
@@ -57,12 +56,6 @@ static void routine_execution_free(zval *item)
     ZVAL_PTR_DTOR(&routine_execution->promise);
     rp_free(routine_execution);
 //    fprintf(stderr, "%p %d routine_execution_free end\n", routine_execution, getpid());
-}
-
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
-{
-    buf->base = (char*) rp_malloc(suggested_size);
-    buf->len = suggested_size;
 }
 
 static void routine_result_close_cb(routine_execution_t *routine_execution)
@@ -109,7 +102,7 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     uv_pipe_open(&routine_execution->pipe, fd[1]);
     routine_execution->index = zend_hash_next_free_element(&resource->routine_executions);
     zend_hash_index_add_ptr(&resource->routine_executions, routine_execution->index, routine_execution);
-    uv_read_start((uv_stream_t *) &routine_execution->pipe, alloc_buffer, (uv_read_cb) routine_result_read_cb);
+    uv_read_start((uv_stream_t *) &routine_execution->pipe, rp_alloc_buffer, (uv_read_cb) routine_result_read_cb);
 
     pipe = rp_malloc(sizeof(uv_pipe_t));
     uv_pipe_init(&main_loop, pipe, 0);

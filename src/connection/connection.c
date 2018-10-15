@@ -17,7 +17,6 @@ DECLARE_FUNCTION_ENTRY(respond_connection_connection) =
 
 static void connection_write_cb(rp_write_req_t *req, int status);
 static void connection_close_cb(uv_handle_t* handle);
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
 static zend_object *create_respond_connection_connection_resource(zend_class_entry *class_type);
 static void free_respond_connection_connection_resource(zend_object *object);
@@ -75,14 +74,6 @@ static void releaseResource(rp_connection_ext_t *resource)
     zval_ptr_dtor(&gc);
 }
 
-static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
-{
-    rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) handle)->connection_zo, rp_connection_ext_t);
-    buf->base = (char*) rp_malloc(suggested_size);
-    buf->len = suggested_size;
-//    fprintf(stderr, "%p %d %p buffer\n", resource, getpid(), buf->base);
-}
-
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
     zval param[2];
@@ -109,7 +100,7 @@ void rp_connection_factory(rp_stream_t *stream, zval *connection)
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_ext_t);
     resource->stream = stream;
     stream->connection_zo = Z_OBJ_P(connection);
-    uv_read_start((uv_stream_t*) stream, alloc_buffer, read_cb);
+    uv_read_start((uv_stream_t*) stream, rp_alloc_buffer, read_cb);
 //    Z_ADDREF_P(connection);
     //fprintf(stderr, "init %d %p\n", getpid(), resource);
 }
