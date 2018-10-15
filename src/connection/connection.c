@@ -78,19 +78,22 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 {
     zval param[2];
     rp_connection_ext_t *resource = FETCH_RESOURCE(((rp_stream_t *) stream)->connection_zo, rp_connection_ext_t);
+    zend_string *string = buf->base - XtOffsetOf(zend_string, val);
     ZVAL_OBJ(&param[0], &resource->zo);
 //    fprintf(stderr, "%p %d %d recv\n", resource, getpid(), nread);
     if(nread > 0){
-        ZVAL_STRINGL(&param[1], buf->base, nread);
+        string->len = nread;
+        string->val[nread] = '\0';
+        ZVAL_NEW_STR(&param[1], string);
         rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 2, param);
-        ZVAL_PTR_DTOR(&param[1]);
     }
     else{
         ZVAL_LONG(&param[1], nread);
         rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), 2, param);
         connection_close(resource);
     }
-    rp_free(buf->base);
+
+    zend_string_release(string);
 //    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
 }
 
@@ -100,7 +103,7 @@ void rp_connection_factory(rp_stream_t *stream, zval *connection)
     rp_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_ext_t);
     resource->stream = stream;
     stream->connection_zo = Z_OBJ_P(connection);
-    uv_read_start((uv_stream_t*) stream, rp_alloc_buffer, read_cb);
+    uv_read_start((uv_stream_t*) stream, rp_alloc_buffer_zend_string, read_cb);
 //    Z_ADDREF_P(connection);
     //fprintf(stderr, "init %d %p\n", getpid(), resource);
 }

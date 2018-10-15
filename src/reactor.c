@@ -50,6 +50,13 @@ rp_reactor_t *rp_reactor_get_head()
     return rp_reactor_head;
 }
 
+void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
+{
+    zend_string *string = zend_string_alloc(suggested_size + 1, 0);
+    buf->base = string->val;
+    buf->len = suggested_size;
+}
+
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
     buf->base = (char*) rp_malloc(suggested_size);

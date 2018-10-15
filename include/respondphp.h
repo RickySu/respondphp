@@ -72,6 +72,7 @@ void rp_connection_factory(rp_stream_t *client, zval *connection);
 void rp_make_promise_object(zval *promise);
 void rp_resolve_promise(zval *promise, zval *result);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
+void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 
 static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
 {
