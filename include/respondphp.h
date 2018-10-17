@@ -26,6 +26,8 @@
 
 #include <sys/prctl.h>
 #include <php.h>
+#include <Zend/zend_interfaces.h>
+#include <Zend/zend_exceptions.h>
 #include <ext/standard/info.h>
 #include <uv.h>
 #include "config.h"
@@ -38,6 +40,7 @@ extern uv_loop_t main_loop;
 extern uv_pipe_t ipc_pipe;
 extern uv_pipe_t data_pipe;
 extern uv_pipe_t routine_pipe;
+extern zend_class_entry *rp_promise_ce;
 extern zend_module_entry respondphp_module_entry;
 
 PHP_MINIT_FUNCTION(respondphp);
@@ -71,12 +74,19 @@ int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_factory(rp_stream_t *client, zval *connection);
-void rp_make_promise_object(zval *promise);
-void rp_reject_promise(zval *promise, zval *result);
-void rp_resolve_promise(zval *promise, zval *result);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_close_cb_release(uv_handle_t* handle);
+
+static zend_always_inline void rp_reject_promise(zval *promise, zval *result)
+{
+    zend_call_method_with_1_params(promise, Z_OBJCE_P(promise), NULL, "reject", NULL, result);
+}
+
+static zend_always_inline void rp_resolve_promise(zval *promise, zval *result)
+{
+    zend_call_method_with_1_params(promise, Z_OBJCE_P(promise), NULL, "resolve", NULL, result);
+}
 
 static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
 {
@@ -106,6 +116,21 @@ static zend_always_inline void zend_object_ptr_dtor(zend_object *zo)
     zval gc;
     ZVAL_OBJ(&gc, zo);
     ZVAL_PTR_DTOR(&gc);
+}
+
+static zend_always_inline zend_class_entry *rp_fetch_ce(char *class_name, size_t class_name_len)
+{
+    zend_string *z_class_name;
+    zend_class_entry *ce;
+    z_class_name = zend_string_init(class_name, class_name_len, 0);
+    ce = zend_fetch_class(z_class_name, ZEND_FETCH_CLASS_AUTO);
+    zend_string_release(z_class_name);
+    return ce;
+}
+
+static zend_always_inline void rp_make_promise_object(zval *promise)
+{
+    object_init_ex(promise, rp_promise_ce);
 }
 
 #ifdef HAVE_PR_SET_PDEATHSIG

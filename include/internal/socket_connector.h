@@ -1,7 +1,5 @@
 #ifndef _RP_INTERNAL_SOCKET_CONNECTOR_H
 #define _RP_INTERNAL_SOCKET_CONNECTOR_H
-#include "Zend/zend_interfaces.h"
-#include "Zend/zend_exceptions.h"
 
 typedef struct {
     uv_connect_t connect_req;

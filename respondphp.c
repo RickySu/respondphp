@@ -6,8 +6,9 @@ uv_pipe_t ipc_pipe;
 uv_pipe_t data_pipe;
 uv_pipe_t routine_pipe;
 static rp_task_type_t rp_task_type = ACTOR;
+zend_class_entry *rp_promise_ce = NULL;
 
-static void implements_interfaces()
+static void declare_interfaces()
 {
     CLASS_ENTRY_FUNCTION_C(respond_event_event_emitter_interface);
     CLASS_ENTRY_FUNCTION_C(respond_stream_writable_stream_interface);
@@ -40,7 +41,7 @@ zend_module_entry respondphp_module_entry =
 
 PHP_MINIT_FUNCTION(respondphp)
 {
-    implements_interfaces();
+    declare_interfaces();
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
     CLASS_ENTRY_FUNCTION_C(respond_connector_tcp);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
@@ -59,6 +60,7 @@ PHP_MSHUTDOWN_FUNCTION(respondphp)
 PHP_RINIT_FUNCTION(respondphp)
 {
     zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
+    rp_promise_ce = rp_fetch_ce(ZEND_STRL(PREDEFINED_PHP_Respond_Async_Promise));
     return SUCCESS;
 }
 
@@ -87,43 +89,6 @@ rp_task_type_t rp_get_task_type()
 void rp_set_task_type(rp_task_type_t type)
 {
     rp_task_type = type;
-}
-
-void rp_make_promise_object(zval *promise)
-{
-    zend_class_entry *ce;
-    zend_string *class_name = zend_string_init(ZEND_STRL(PREDEFINED_PHP_Respond_Async_Promise), 0);
-    ce = zend_fetch_class(class_name, ZEND_FETCH_CLASS_AUTO);
-    object_init_ex(promise, ce);
-    zend_string_release(class_name);
-}
-
-void rp_reject_promise(zval *promise, zval *result)
-{
-    fcall_info_t fci;
-    zval fn, retval;
-
-    zval_add_ref(promise);
-    array_init(&fn);
-    add_next_index_zval(&fn, promise);
-    add_next_index_string(&fn, "reject");
-    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
-    fci_call_function(&fci, &retval, 1, result);
-    ZVAL_PTR_DTOR(&fn);
-}
-
-void rp_resolve_promise(zval *promise, zval *result)
-{
-    fcall_info_t fci;
-    zval fn, retval;
-
-    zval_add_ref(promise);
-    array_init(&fn);
-    add_next_index_zval(&fn, promise);
-    add_next_index_string(&fn, "resolve");
-    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
-    fci_call_function(&fci, &retval, 1, result);
-    ZVAL_PTR_DTOR(&fn);
 }
 
 void rp_close_cb_release(uv_handle_t* handle)
