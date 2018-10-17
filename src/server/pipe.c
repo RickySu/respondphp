@@ -1,5 +1,12 @@
 #include "respondphp.h"
 #include "server/pipe.h"
+DECLARE_FUNCTION_ENTRY(respond_server_pipe) =
+{
+    PHP_ME(respond_server_pipe, __construct, ARGINFO(respond_server_pipe, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+    PHP_ME(respond_server_pipe, close, NULL, ZEND_ACC_PUBLIC)
+    TRAIT_FUNCTION_ENTRY_ME(respond_server_pipe, event_emitter)
+    PHP_FE_END
+};
 
 static zend_object *create_respond_server_pipe_resource(zend_class_entry *class_type);
 static void free_respond_server_pipe_resource(zend_object *object);

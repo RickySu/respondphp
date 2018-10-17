@@ -1,5 +1,6 @@
 #ifndef _RP_SERVER_ROUTINE_H
 #define _RP_SERVER_ROUTINE_H
+CLASS_ENTRY_FUNCTION_D(respond_server_routine);
 
 ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_routine, __construct), 0)
     ZEND_ARG_CALLABLE_INFO(0, execution, 0)

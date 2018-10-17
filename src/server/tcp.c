@@ -1,12 +1,19 @@
 #include "respondphp.h"
 #include "server/tcp.h"
+DECLARE_FUNCTION_ENTRY(respond_server_tcp) =
+{
+    PHP_ME(respond_server_tcp, __construct, ARGINFO(respond_server_tcp, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+    PHP_ME(respond_server_tcp, close, NULL, ZEND_ACC_PUBLIC)
+    TRAIT_FUNCTION_ENTRY_ME(respond_server_tcp, event_emitter)
+    PHP_FE_END
+};
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *class_type);
 static void free_respond_server_tcp_resource(zend_object *object);
 static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_stream_t *client);
-static void releaseResource(rp_tcp_ext_t *resource);
+static void releaseResource(rp_server_tcp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
 
 static void client_accept_close_cb(uv_handle_t* handle)
@@ -17,7 +24,7 @@ static void client_accept_close_cb(uv_handle_t* handle)
 CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
 {
     REGISTER_CLASS_WITH_OBJECT_NEW(respond_server_tcp, "Respond\\Server\\Tcp", create_respond_server_tcp_resource);
-    OBJECT_HANDLER(respond_server_tcp).offset = XtOffsetOf(rp_tcp_ext_t, zo);
+    OBJECT_HANDLER(respond_server_tcp).offset = XtOffsetOf(rp_server_tcp_ext_t, zo);
     OBJECT_HANDLER(respond_server_tcp).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_tcp).free_obj = free_respond_server_tcp_resource;
     zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
@@ -34,7 +41,7 @@ static void server_init(rp_reactor_t *reactor)
     fprintf(stderr, "tcp listen: %s:%d\n", addr_str, port);
 }
 
-static void releaseResource(rp_tcp_ext_t *resource)
+static void releaseResource(rp_server_tcp_ext_t *resource)
 {
 }
 
@@ -57,8 +64,8 @@ static void connection_cb(rp_reactor_t *reactor, int status)
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *ce)
 {
-    rp_tcp_ext_t *resource;
-    resource = ALLOC_RESOURCE(rp_tcp_ext_t, ce);
+    rp_server_tcp_ext_t *resource;
+    resource = ALLOC_RESOURCE(rp_server_tcp_ext_t, ce);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);    
     resource->zo.handlers = &OBJECT_HANDLER(respond_server_tcp);
@@ -68,8 +75,8 @@ static zend_object *create_respond_server_tcp_resource(zend_class_entry *ce)
 
 static void free_respond_server_tcp_resource(zend_object *object)
 {
-    rp_tcp_ext_t *resource;
-    resource = FETCH_RESOURCE(object, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource;
+    resource = FETCH_RESOURCE(object, rp_server_tcp_ext_t);
     releaseResource(resource);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_std_dtor(object);
@@ -82,7 +89,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     zend_string *host;
 
     rp_reactor_t *reactor;
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
         return;
@@ -112,7 +119,7 @@ PHP_METHOD(respond_server_tcp, __construct)
 static void accepted_cb(zend_object *server, rp_stream_t *client)
 {
     zval connection;
-    rp_tcp_ext_t *resource = FETCH_RESOURCE(server, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_RESOURCE(server, rp_server_tcp_ext_t);
     rp_connection_factory(client, &connection);
     RP_ASSERT(zval_refcount_p(&connection) == 1);
     rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("connect"), 1, &connection);
@@ -122,13 +129,13 @@ static void accepted_cb(zend_object *server, rp_stream_t *client)
 PHP_METHOD(respond_server_tcp, close)
 {
 //    zval *self = getThis();
-//    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+//    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
 }
 
 PHP_METHOD(respond_server_tcp, on)
 {
     zval *self = getThis();
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
     const char *event;
     size_t event_len;
     zval *hook;
@@ -143,7 +150,7 @@ PHP_METHOD(respond_server_tcp, on)
 PHP_METHOD(respond_server_tcp, off)
 {
     zval *self = getThis();
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
     const char *event;
     size_t event_len;
     zval *hook;
@@ -157,7 +164,7 @@ PHP_METHOD(respond_server_tcp, off)
 PHP_METHOD(respond_server_tcp, removeListeners)
 {
     zval *self = getThis();
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
     const char *event;
     size_t event_len;
 
@@ -172,7 +179,7 @@ PHP_METHOD(respond_server_tcp, getListeners)
 {
     zval *self = getThis();
     zval *listeners;
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
     const char *event;
     size_t event_len;
 
@@ -192,7 +199,7 @@ PHP_METHOD(respond_server_tcp, getListeners)
 PHP_METHOD(respond_server_tcp, emit)
 {
     zval *self = getThis();
-    rp_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_tcp_ext_t);
+    rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
     zval *params;
     int n_params;
 

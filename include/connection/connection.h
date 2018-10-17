@@ -5,6 +5,8 @@
 #include "interface/stream_readable_stream_interface.h"
 #include "interface/stream_writable_stream_interface.h"
 
+CLASS_ENTRY_FUNCTION_D(respond_connection_connection);
+
 typedef struct {
     uint flag;
     rp_stream_t    *stream;

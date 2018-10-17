@@ -42,6 +42,7 @@ PHP_MINIT_FUNCTION(respondphp)
 {
     implements_interfaces();
     CLASS_ENTRY_FUNCTION_C(respond_event_loop);
+    CLASS_ENTRY_FUNCTION_C(respond_connector_tcp);
     CLASS_ENTRY_FUNCTION_C(respond_server_tcp);
     CLASS_ENTRY_FUNCTION_C(respond_server_udp);
     CLASS_ENTRY_FUNCTION_C(respond_server_pipe);

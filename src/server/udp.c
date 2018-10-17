@@ -1,5 +1,13 @@
 #include "respondphp.h"
 #include "server/udp.h"
+DECLARE_FUNCTION_ENTRY(respond_server_udp) =
+{
+    PHP_ME(respond_server_udp, __construct, ARGINFO(respond_server_udp, __construct), ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+    PHP_ME(respond_server_udp, send, ARGINFO(respond_server_udp, send), ZEND_ACC_PUBLIC)
+    PHP_ME(respond_server_udp, close, NULL, ZEND_ACC_PUBLIC)
+    TRAIT_FUNCTION_ENTRY_ME(respond_server_udp, event_emitter)
+    PHP_FE_END
+};
 
 static zend_object *create_respond_server_udp_resource(zend_class_entry *class_type);
 static void free_respond_server_udp_resource(zend_object *object);

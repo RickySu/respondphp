@@ -47,6 +47,7 @@ PHP_RINIT_FUNCTION(respondphp);
 PHP_RSHUTDOWN_FUNCTION(respondphp);
 
 DECLARE_CLASS_ENTRY(respond_event_loop);
+DECLARE_CLASS_ENTRY(respond_connector_tcp);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
 DECLARE_CLASS_ENTRY(respond_server_udp);
 DECLARE_CLASS_ENTRY(respond_server_pipe);
