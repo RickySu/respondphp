@@ -72,9 +72,11 @@ int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_factory(rp_stream_t *client, zval *connection);
 void rp_make_promise_object(zval *promise);
+void rp_reject_promise(zval *promise, zval *result);
 void rp_resolve_promise(zval *promise, zval *result);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
+void rp_close_cb_release(uv_handle_t* handle);
 
 static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t data_len)
 {
@@ -86,7 +88,8 @@ static zend_always_inline rp_write_req_t *rp_make_write_req(char *data, size_t d
     return req;
 }
 
-static zend_always_inline void sock_addr(struct sockaddr *sa, char *ip_name, size_t ip_len, u_int16_t *port) {
+static zend_always_inline void sock_addr(struct sockaddr *sa, char *ip_name, size_t ip_len, u_int16_t *port)
+{
 
     if(sa->sa_family == AF_INET) {
         inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), ip_name, ip_len),
@@ -96,6 +99,13 @@ static zend_always_inline void sock_addr(struct sockaddr *sa, char *ip_name, siz
 
     inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), ip_name, ip_len),
     *port = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
+}
+
+static zend_always_inline void zend_object_ptr_dtor(zend_object *zo)
+{
+    zval gc;
+    ZVAL_OBJ(&gc, zo);
+    ZVAL_PTR_DTOR(&gc);
 }
 
 #ifdef HAVE_PR_SET_PDEATHSIG

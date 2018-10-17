@@ -98,6 +98,20 @@ void rp_make_promise_object(zval *promise)
     zend_string_release(class_name);
 }
 
+void rp_reject_promise(zval *promise, zval *result)
+{
+    fcall_info_t fci;
+    zval fn, retval;
+
+    zval_add_ref(promise);
+    array_init(&fn);
+    add_next_index_zval(&fn, promise);
+    add_next_index_string(&fn, "reject");
+    zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
+    fci_call_function(&fci, &retval, 1, result);
+    ZVAL_PTR_DTOR(&fn);
+}
+
 void rp_resolve_promise(zval *promise, zval *result)
 {
     fcall_info_t fci;
@@ -110,4 +124,9 @@ void rp_resolve_promise(zval *promise, zval *result)
     zend_fcall_info_init(&fn, 0, FCI_PARSE_PARAMETERS_CC(fci), NULL, NULL);
     fci_call_function(&fci, &retval, 1, result);
     ZVAL_PTR_DTOR(&fn);
+}
+
+void rp_close_cb_release(uv_handle_t* handle)
+{
+    rp_free(handle);
 }

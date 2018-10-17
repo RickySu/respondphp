@@ -16,7 +16,6 @@ static zend_bool unserialize_fci_inited = 0;
 
 static zend_object *create_respond_server_routine_resource(zend_class_entry *class_type);
 static void free_respond_server_routine_resource(zend_object *object);
-static void client_accept_close_cb(uv_handle_t* handle);
 static void close_cb(rp_stream_t *client);
 static void accepted_cb(zend_object *server, rp_stream_t *client, char *ipc_data, size_t ipc_data_len);
 static void routine_result_read_cb(routine_execution_t *routine_execution, int status, const uv_buf_t *buf);
@@ -28,12 +27,6 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
 static void rp_serialize(zval *param, zval *serialized);
 static void rp_unserialize(zval *param, char *serialized, size_t serialized_len);
 static void routine_result_shutdown_cb(uv_shutdown_t* req, int status);
-
-static void client_accept_close_cb(uv_handle_t* handle)
-{
-//    fprintf(stderr, "%p %d reactor send free\n", handle, getpid());
-    rp_free(handle);
-}
 
 CLASS_ENTRY_FUNCTION_D(respond_server_routine)
 {
@@ -108,7 +101,7 @@ static routine_execution_t *routine_execution_add(rp_routine_ext_t *resource, zv
     uv_pipe_init(&main_loop, pipe, 0);
     uv_pipe_open(pipe, fd[0]);
 //    fprintf(stderr, "%p %d %p reactor send\n", pipe, getpid(), routine_execution);
-    rp_reactor_ipc_send_ex(resource->reactor, (uv_stream_t *) pipe, client_accept_close_cb, msg, msg_len, (uv_stream_t *) &routine_pipe);
+    rp_reactor_ipc_send_ex(resource->reactor, (uv_stream_t *) pipe, rp_close_cb_release, msg, msg_len, (uv_stream_t *) &routine_pipe);
     return routine_execution;
 }
 

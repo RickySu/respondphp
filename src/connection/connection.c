@@ -66,12 +66,9 @@ static void connection_close_cb(uv_handle_t* handle)
 
 static void releaseResource(rp_connection_ext_t *resource)
 {
-    zval gc;
     rp_free(resource->stream);
     rp_event_hook_destroy(&resource->event_hook);
-    ZVAL_OBJ(&gc, &resource->zo);
-//    fprintf(stderr, "%p %d %d release resource\n", resource, getpid(), zval_refcount_p(&gc));
-    zval_ptr_dtor(&gc);
+    zend_object_ptr_dtor(&resource->zo);
 }
 
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)

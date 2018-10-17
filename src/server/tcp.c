@@ -10,16 +10,10 @@ DECLARE_FUNCTION_ENTRY(respond_server_tcp) =
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *class_type);
 static void free_respond_server_tcp_resource(zend_object *object);
-static void client_accept_close_cb(uv_handle_t* handle);
 static void connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_stream_t *client);
 static void releaseResource(rp_server_tcp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
-
-static void client_accept_close_cb(uv_handle_t* handle)
-{
-    rp_free(handle);
-}
 
 CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
 {
@@ -55,11 +49,11 @@ static void connection_cb(rp_reactor_t *reactor, int status)
     uv_tcp_init(&main_loop, client);
     
     if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
-        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, client_accept_close_cb);
+        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, rp_close_cb_release);
         return;
     }
     
-    uv_close((uv_handle_t *) client, client_accept_close_cb);
+    uv_close((uv_handle_t *) client, rp_close_cb_release);
 }
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *ce)

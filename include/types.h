@@ -59,12 +59,6 @@ typedef struct rp_reactor_s {
 } rp_reactor_t;
 
 typedef struct {
-    uv_connect_t connect_req;
-    zval promise;
-    zend_object *zo;
-} rp_connector_t;
-
-typedef struct {
     rp_reactor_t *reactor;
     size_t data_len;
     char data[0];

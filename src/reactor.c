@@ -15,7 +15,6 @@ static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd);
 static int rp_init_routine_server(int routine_ipc_fd);
 static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
-static void close_cb(uv_handle_t *handle);
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send_req_t *req);
@@ -40,7 +39,7 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
         return client;
     }
 
-    uv_close((uv_handle_t*) client, close_cb);
+    uv_close((uv_handle_t*) client, rp_close_cb_release);
     rp_free(client);
     return NULL;
 }
@@ -108,11 +107,6 @@ static int rp_init_routine_server(int routine_ipc_fd)
     }
 
     return uv_read_start((uv_stream_t*) &routine_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive);
-}
-
-static void close_cb(uv_handle_t* handle)
-{
-    rp_free(handle);
 }
 
 static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)

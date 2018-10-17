@@ -1,4 +1,5 @@
 #include "respondphp.h"
+#include "internal/socket_connector.h"
 #include "connector/tcp.h"
 
 DECLARE_FUNCTION_ENTRY(respond_connector_tcp) =
@@ -57,40 +58,20 @@ PHP_METHOD(respond_connector_tcp, connect)
         return;
     }
 
-    connector = rp_malloc(sizeof(rp_connector_t));
-
     if(memchr(host->val, ':', host->len) == NULL) {
         if ((ret = uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr)) != 0) {
-            rp_free(connect);
             return;
         }
     }
     else {
         if ((ret = uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6)) != 0) {
-            rp_free(connect);
             return;
         }
     }
 
     uv_tcp = rp_malloc(sizeof(uv_tcp_t));
     uv_tcp_init(&main_loop, uv_tcp);
-    uv_tcp_connect(connector, uv_tcp, &addr, (uv_connect_cb) client_connection_cb);
-    connector->zo = Z_OBJ_P(self);
-    Z_ADDREF_P(self);
-    rp_make_promise_object(&connector->promise);
+    connector = rp_socket_connect(uv_tcp, self, &addr);
     fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
     RETVAL_ZVAL(&connector->promise, 1, 0);
-}
-
-static void client_connection_cb(rp_connector_t *connector, int status)
-{
-    zval gc;
-    ZVAL_OBJ(&gc, connector->zo);
-    fprintf(stderr, "client connected: %d\n", status);
-    rp_resolve_promise(&connector->promise, &gc);
-    ZVAL_PTR_DTOR(&connector->promise);
-    ZVAL_PTR_DTOR(&gc);
-    uv_close(connector->connect_req.handle, NULL);
-    rp_free(connector->connect_req.handle);
-    rp_free(connector);
 }
