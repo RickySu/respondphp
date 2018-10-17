@@ -67,11 +67,13 @@ PHP_METHOD(respond_event_loop, run)
             mode = UV_RUN_DEFAULT;        
     }
 
-    rp_init_routine_manager(&routine_ipc_fd);
-    rp_init_worker_manager(&worker_ipc_fd, &worker_data_fd);
+    if(rp_reactors_count() > 0) {
+        rp_init_routine_manager(&routine_ipc_fd);
+        rp_init_worker_manager(&worker_ipc_fd, &worker_data_fd);
 
-    if(worker_ipc_fd < 0 || routine_ipc_fd < 0) {
-        return;
+        if (worker_ipc_fd < 0 || routine_ipc_fd < 0) {
+            return;
+        }
     }
 
     rp_init_reactor(worker_ipc_fd, worker_data_fd, routine_ipc_fd);

@@ -67,9 +67,10 @@ void rp_init_worker_manager(int *worker_fd, int *worker_data_fd);
 int rp_init_reactor(int worker_ipc_fd, int work_data_fd, int routine_ipc_fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
-rp_reactor_t *rp_reactor_add();
-rp_reactor_t *rp_reactor_get_head();
-void rp_reactor_destroy();
+rp_reactor_t *rp_reactors_add();
+void rp_reactors_init();
+void rp_reactors_destroy();
+int rp_reactors_count();
 int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data, size_t data_len);
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)

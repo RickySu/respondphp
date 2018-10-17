@@ -5,11 +5,8 @@
 uv_signal_t signal_handle;
 #endif
 
-static rp_reactor_t *rp_reactor_head = NULL;
-static rp_reactor_t *rp_reactor_tail = NULL;
-
+static HashTable rp_reactors;
 static void write2_cb(reactor_ipc_send_req_t *req, int status);
-static void write_cb(reactor_ipc_send_req_t *req, int status);
 static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd);
 static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd);
 static int rp_init_routine_server(int routine_ipc_fd);
@@ -18,6 +15,7 @@ static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t 
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send_req_t *req);
+static void reactor_free(zval *reactor_p);
 
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
@@ -42,11 +40,6 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
     uv_close((uv_handle_t*) client, rp_close_cb_release);
     rp_free(client);
     return NULL;
-}
-
-rp_reactor_t *rp_reactor_get_head()
-{
-    return rp_reactor_head;
 }
 
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
@@ -151,32 +144,42 @@ static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send
     }
 }
 
+static void reactor_free(zval *reactor_p)
+{
+    rp_free(Z_PTR_P(reactor_p));
+}
+
 static void write2_cb(reactor_ipc_send_req_t *req, int status)
 {
     uv_close((uv_handle_t *) req->client, (uv_close_cb) req->close_cb);
     rp_free(req);
 }
 
-static void write_cb(reactor_ipc_send_req_t *req, int status)
-{
-    rp_free(req);
-}
-
 static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
 {
-    rp_reactor_t *reactor = rp_reactor_get_head();
+    zval *current;
+    rp_reactor_t *reactor;
     uv_pipe_init(&main_loop, &ipc_pipe, 1);
     uv_pipe_init(&main_loop, &data_pipe, 0);
     uv_pipe_open(&ipc_pipe, worker_ipc_fd);
     uv_pipe_open(&data_pipe, worker_data_fd);
     uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
 
-    while(reactor) {
+    for(
+        zend_hash_internal_pointer_reset(&rp_reactors);
+        current = zend_hash_get_current_data(&rp_reactors);
+        zend_hash_move_forward(&rp_reactors)
+    ) {
+        reactor = Z_PTR_P(current);
         if(reactor->server_init_cb) {
             reactor->server_init_cb(reactor);
         }
-        reactor = reactor->next;
     }
+}
+
+int rp_reactors_count()
+{
+    zend_hash_num_elements(&rp_reactors);
 }
 
 int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
@@ -186,7 +189,9 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
     switch(rp_get_task_type()) {
         case ACTOR:
             rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
-            rp_init_actor_server(worker_ipc_fd, worker_data_fd);
+            if(rp_reactors_count() > 0) {
+                rp_init_actor_server(worker_ipc_fd, worker_data_fd);
+            }
             break;
         case WORKER:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
@@ -207,29 +212,20 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
     return ret;
 }
 
-void rp_reactor_destroy()
+void rp_reactors_init()
 {
-    rp_reactor_t *reactor = rp_reactor_get_head();
-    rp_reactor_t *tmp_reactor;
-    while(reactor) {
-        tmp_reactor = reactor;
-        reactor = reactor->next;
-        rp_free(tmp_reactor);
-    }
+    zend_hash_init(&rp_reactors, 10, NULL, reactor_free, 0);
 }
 
-rp_reactor_t *rp_reactor_add()
+void rp_reactors_destroy()
+{
+    zend_hash_destroy(&rp_reactors);
+}
+
+rp_reactor_t *rp_reactors_add()
 {
     rp_reactor_t *reactor = rp_calloc(1, sizeof(rp_reactor_t));
-
-    if(rp_reactor_head == NULL) {
-        rp_reactor_head = rp_reactor_tail = reactor;
-        return reactor;
-    }
-    
-    rp_reactor_tail->next = reactor;
-    rp_reactor_tail = reactor;
-    
+    zend_hash_next_index_insert_ptr(&rp_reactors, reactor);
     return reactor;
 }
 
@@ -243,7 +239,7 @@ int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data
     send_req->buf.base = (char *) &send_req->reactor_ext;
     send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
     fprintf(stderr, "data send: %.*s\n", data_len, data);
-    return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) write_cb);
+    return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) rp_close_cb_release);
 }
 
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc)

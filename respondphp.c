@@ -61,12 +61,13 @@ PHP_RINIT_FUNCTION(respondphp)
 {
     zend_eval_string(PREDEFINED_PHP, NULL, "predefine php code");
     rp_promise_ce = rp_fetch_ce(ZEND_STRL(PREDEFINED_PHP_Respond_Async_Promise));
+    rp_reactors_init();
     return SUCCESS;
 }
 
 PHP_RSHUTDOWN_FUNCTION(respondphp)
 {
-    rp_reactor_destroy();
+    rp_reactors_destroy();
     return SUCCESS;
 }
 

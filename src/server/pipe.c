@@ -89,7 +89,7 @@ PHP_METHOD(respond_server_pipe, __construct)
         return;
     }
 
-    reactor = rp_reactor_add();
+    reactor = rp_reactors_add();
     reactor->addr.socket_path = rp_calloc(1, socket_path_len + 1);
     reactor->type = RP_PIPE;
     reactor->server_init_cb = server_init;

@@ -124,7 +124,7 @@ PHP_METHOD(respond_server_udp, __construct)
         return;
     }
     
-    reactor = rp_reactor_add();
+    reactor = rp_reactors_add();
 
     if(memchr(host->val, ':', host->len) == NULL) {
         if (uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr) != 0) {
