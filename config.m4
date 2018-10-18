@@ -82,6 +82,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/server/tcp.c
     src/server/pipe.c
     src/server/routine.c
+    src/server/secure.c
     src/connector/tcp.c
     src/connector/pipe.c
     src/connection/connection.c

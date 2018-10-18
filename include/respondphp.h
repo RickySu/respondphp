@@ -63,6 +63,10 @@ DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connection_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
 
+#ifdef HAVE_OPENSSL
+DECLARE_CLASS_ENTRY(respond_server_secure);
+#endif
+
 void rp_init_routine_manager(int *routine_fd);
 void rp_init_worker_manager(int *worker_fd, int *worker_data_fd);
 int rp_init_reactor(int worker_ipc_fd, int work_data_fd, int routine_ipc_fd);
