@@ -179,7 +179,7 @@ static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
 
 int rp_reactors_count()
 {
-    zend_hash_num_elements(&rp_reactors);
+    return zend_hash_num_elements(&rp_reactors);
 }
 
 int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)

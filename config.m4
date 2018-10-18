@@ -73,7 +73,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
 
   modules="   
     thirdparty/picohttpparser/picohttpparser.c
-    respondphp.c
+    src/respondphp.c
     src/event_loop.c
     src/reactor.c
     src/routine_manager.c
@@ -83,6 +83,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/server/pipe.c
     src/server/routine.c
     src/connector/tcp.c
+    src/connector/pipe.c
     src/connection/connection.c
     src/internal/event_emitter.c
     src/internal/socket_connection.c

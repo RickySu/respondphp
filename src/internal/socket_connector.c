@@ -15,6 +15,9 @@ rp_connector_t *rp_socket_connect(uv_handle_t *handle, zval *self, rp_reactor_ad
         case UV_TCP:
             uv_tcp_connect(connector, handle, addr, (uv_connect_cb) connection_cb);
             break;
+        case UV_NAMED_PIPE:
+            uv_pipe_connect(connector, handle, addr, (uv_connect_cb) connection_cb);
+            break;
         default:
             break;
     }
