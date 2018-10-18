@@ -45,13 +45,15 @@ static void free_respond_event_loop_resource(zend_object *object)
 
 PHP_METHOD(respond_event_loop, run)
 {
+    zval retval;
     int worker_ipc_fd, routine_ipc_fd, worker_data_fd;
     long option = RUN_DEFAULT;
+    fcall_info_t callback;
     uv_run_mode mode;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &option) == FAILURE) {
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "|lf", &option, FCI_PARSE_PARAMETERS_CC(callback)) == FAILURE) {
         return;
-    }    
+    }
 
     switch(option){
         case RUN_DEFAULT:
@@ -77,6 +79,11 @@ PHP_METHOD(respond_event_loop, run)
     }
 
     rp_init_reactor(worker_ipc_fd, worker_data_fd, routine_ipc_fd);
+
+    if(callback.fcc.initialized){
+        fci_call_function(&callback, &retval, 0, NULL);
+    }
+
     uv_run(&main_loop, mode);
 }
 

@@ -188,8 +188,8 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
     uv_loop_init(&main_loop);
     switch(rp_get_task_type()) {
         case ACTOR:
-            rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
             if(rp_reactors_count() > 0) {
+                rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
                 rp_init_actor_server(worker_ipc_fd, worker_data_fd);
             }
             break;
