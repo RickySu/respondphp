@@ -81,7 +81,7 @@ PHP_METHOD(respond_server_tcp, __construct)
     long ret, port;
     zval *self = getThis();
     zend_string *host;
-
+    rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
     rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
 
@@ -89,24 +89,23 @@ PHP_METHOD(respond_server_tcp, __construct)
         return;
     }
 
-    reactor = rp_reactors_add();
-
     if(memchr(host->val, ':', host->len) == NULL) {
-        if ((ret = uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
+        if ((ret = uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr)) != 0) {
             return;
         }
     }
     else {
-        if ((ret = uv_ip6_addr(host->val, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
+        if ((ret = uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6)) != 0) {
             return;
         }
     }
 
+    reactor = rp_reactors_add(self);
+    memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_TCP;
     reactor->server_init_cb = server_init;
     reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
-    reactor->server = &resource->zo;
     resource->reactor = reactor;
 }
 

@@ -29,7 +29,7 @@ typedef union {
 typedef union {
     struct sockaddr_in sockaddr;
     struct sockaddr_in6 sockaddr6;
-    const char *socket_path;
+    zend_string *socket_path;
 } rp_reactor_addr_t;
 
 typedef struct {

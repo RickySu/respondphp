@@ -72,7 +72,7 @@ void rp_init_worker_manager(int *worker_fd, int *worker_data_fd);
 int rp_init_reactor(int worker_ipc_fd, int work_data_fd, int routine_ipc_fd);
 rp_task_type_t rp_get_task_type();
 void rp_set_task_type(rp_task_type_t type);
-rp_reactor_t *rp_reactors_add();
+rp_reactor_t *rp_reactors_add(zval *server);
 void rp_reactors_init();
 void rp_reactors_destroy();
 int rp_reactors_count();

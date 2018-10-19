@@ -116,33 +116,32 @@ PHP_METHOD(respond_server_udp, __construct)
     long port;
     zval *self = getThis();
     zend_string *host;
-
+    rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
         return;
     }
-    
-    reactor = rp_reactors_add();
 
     if(memchr(host->val, ':', host->len) == NULL) {
-        if (uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr) != 0) {
+        if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
             return;
         }
     }
     else {
-        if (uv_ip6_addr(host->val, port & 0xffff, &reactor->addr.sockaddr6) != 0) {
+        if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
             return;
         }
     }
 
+    reactor = rp_reactors_add(self);
+    memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_UDP;
     reactor->server_init_cb = server_init;
     reactor->cb.dgram.recv = (rp_recv_cb) recv_cb;
     reactor->cb.dgram.send = (rp_send_cb) send_cb;
     reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_recv_cb;
-    reactor->server = &resource->zo;
     resource->reactor = reactor;
 }
 

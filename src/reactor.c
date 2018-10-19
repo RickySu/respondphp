@@ -146,7 +146,9 @@ static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send
 
 static void reactor_free(zval *reactor_p)
 {
-    rp_free(Z_PTR_P(reactor_p));
+    rp_reactor_t *reactor = Z_PTR_P(reactor_p);
+    zend_object_ptr_dtor(reactor->server);
+    rp_free(reactor);
 }
 
 static void write2_cb(reactor_ipc_send_req_t *req, int status)
@@ -222,10 +224,12 @@ void rp_reactors_destroy()
     zend_hash_destroy(&rp_reactors);
 }
 
-rp_reactor_t *rp_reactors_add()
+rp_reactor_t *rp_reactors_add(zval *server)
 {
     rp_reactor_t *reactor = rp_calloc(1, sizeof(rp_reactor_t));
     zend_hash_next_index_insert_ptr(&rp_reactors, reactor);
+    Z_ADDREF_P(server);
+    reactor->server = Z_OBJ_P(server);
     return reactor;
 }
 

@@ -81,36 +81,17 @@ static void free_respond_server_secure_resource(zend_object *object)
 
 PHP_METHOD(respond_server_secure, __construct)
 {
-    long ret, port;
     zval *self = getThis();
-    zend_string *host;
+    zval *socket, *options;
 
-    rp_reactor_t *reactor;
     rp_server_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_secure_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "za", &socket, &options)) {
         return;
     }
 
-    reactor = rp_reactors_add();
-
-    if(memchr(host->val, ':', host->len) == NULL) {
-        if ((ret = uv_ip4_addr(host->val, port & 0xffff, &reactor->addr.sockaddr)) != 0) {
-            return;
-        }
-    }
-    else {
-        if ((ret = uv_ip6_addr(host->val, port & 0xffff, &reactor->addr.sockaddr6)) != 0) {
-            return;
-        }
-    }
-
-    reactor->type = RP_TCP;
-    reactor->server_init_cb = server_init;
-    reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
-    reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
-    reactor->server = &resource->zo;
-    resource->reactor = reactor;
+    zend_print_zval_r(socket, 0);
+    zend_print_zval_r(options, 0);
 }
 
 static void accepted_cb(zend_object *server, rp_stream_t *client)

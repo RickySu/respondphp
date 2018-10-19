@@ -132,10 +132,9 @@ PHP_METHOD(respond_server_routine, __construct)
         return;
     }
 
-    reactor = rp_reactors_add();
+    reactor = rp_reactors_add(self);
     reactor->type = RP_ROUTINE;
     reactor->cb.stream.accepted = accepted_cb;
-    reactor->server = &resource->zo;
     resource->reactor = reactor;
     ZVAL_COPY_VALUE(&resource->execution, execution);
     zval_add_ref(&resource->execution);

@@ -18,7 +18,7 @@ static void server_init(rp_reactor_t *reactor);
 static void server_init(rp_reactor_t *reactor)
 {
     uv_pipe_init(&main_loop, &reactor->handler.pipe, 0);
-    uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path);
+    uv_pipe_bind(&reactor->handler.pipe, reactor->addr.socket_path->val);
     uv_listen((uv_stream_t *) &reactor->handler.pipe, SOMAXCONN, reactor->cb.stream.connection);
 }
 
@@ -34,9 +34,9 @@ CLASS_ENTRY_FUNCTION_D(respond_server_pipe)
 static void releaseResource(rp_pipe_ext_t *resource)
 {
     if(rp_get_task_type() == ACTOR){
-        unlink(resource->reactor->addr.socket_path);
+        unlink(resource->reactor->addr.socket_path->val);
     }
-    rp_free(resource->reactor->addr.socket_path);
+    zend_string_release(resource->reactor->addr.socket_path);
 }
 
 static void connection_cb(rp_reactor_t *reactor, int status)
@@ -79,25 +79,23 @@ static void free_respond_server_pipe_resource(zend_object *object)
 PHP_METHOD(respond_server_pipe, __construct)
 {
     zval *self = getThis();
-    const char *socket_path = NULL;
-    size_t socket_path_len;
-
+    zend_string *socket_path = NULL;
     rp_reactor_t *reactor;
     rp_pipe_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_pipe_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &socket_path, &socket_path_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &socket_path)) {
         return;
     }
 
-    reactor = rp_reactors_add();
-    reactor->addr.socket_path = rp_calloc(1, socket_path_len + 1);
+    zend_string_addref(socket_path);
+
+    reactor = rp_reactors_add(self);
+    reactor->addr.socket_path = socket_path;
     reactor->type = RP_PIPE;
     reactor->server_init_cb = server_init;
     reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
-    reactor->server = &resource->zo;
     resource->reactor = reactor;
-    memcpy((void *) reactor->addr.socket_path, socket_path, socket_path_len);
 }
 
 static void accepted_cb(zend_object *server, rp_stream_t *client)
