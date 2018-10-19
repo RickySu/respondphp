@@ -74,6 +74,9 @@ static void free_respond_server_secure_resource(zend_object *object)
 {
     rp_server_secure_ext_t *resource;
     resource = FETCH_RESOURCE(object, rp_server_secure_ext_t);
+    if(resource->socket_zo) {
+        zend_object_ptr_dtor(resource->socket_zo);
+    }
     releaseResource(resource);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_std_dtor(object);
@@ -92,6 +95,8 @@ PHP_METHOD(respond_server_secure, __construct)
 
     zend_print_zval_r(socket, 0);
     zend_print_zval_r(options, 0);
+    resource->socket_zo = Z_OBJ_P(socket);
+    Z_ADDREF_P(socket);
 }
 
 static void accepted_cb(zend_object *server, rp_stream_t *client)

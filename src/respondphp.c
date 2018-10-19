@@ -11,6 +11,7 @@ zend_class_entry *rp_promise_ce = NULL;
 static void declare_interfaces()
 {
     CLASS_ENTRY_FUNCTION_C(respond_event_event_emitter_interface);
+    CLASS_ENTRY_FUNCTION_C(respond_stream_server_interface);
     CLASS_ENTRY_FUNCTION_C(respond_stream_writable_stream_interface);
     CLASS_ENTRY_FUNCTION_C(respond_stream_readable_stream_interface);
     CLASS_ENTRY_FUNCTION_C(respond_socket_connection_interface);

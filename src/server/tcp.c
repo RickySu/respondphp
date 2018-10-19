@@ -21,7 +21,7 @@ CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
     OBJECT_HANDLER(respond_server_tcp).offset = XtOffsetOf(rp_server_tcp_ext_t, zo);
     OBJECT_HANDLER(respond_server_tcp).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_tcp).free_obj = free_respond_server_tcp_resource;
-    zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
+    zend_class_implements(CLASS_ENTRY(respond_server_tcp), 1, CLASS_ENTRY(respond_stream_server_interface));
 }
 
 static void server_init(rp_reactor_t *reactor)

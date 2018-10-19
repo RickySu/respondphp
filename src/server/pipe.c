@@ -28,7 +28,7 @@ CLASS_ENTRY_FUNCTION_D(respond_server_pipe)
     OBJECT_HANDLER(respond_server_pipe).offset = XtOffsetOf(rp_pipe_ext_t, zo);
     OBJECT_HANDLER(respond_server_pipe).clone_obj = NULL;
     OBJECT_HANDLER(respond_server_pipe).free_obj = free_respond_server_pipe_resource;
-    zend_class_implements(CLASS_ENTRY(respond_server_pipe), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
+    zend_class_implements(CLASS_ENTRY(respond_server_pipe), 1, CLASS_ENTRY(respond_stream_server_interface));
 }
 
 static void releaseResource(rp_pipe_ext_t *resource)
