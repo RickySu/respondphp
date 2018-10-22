@@ -53,6 +53,7 @@ PHP_MINIT_FUNCTION(respondphp)
     CLASS_ENTRY_FUNCTION_C(respond_connection_connection);
 #ifdef HAVE_OPENSSL
     CLASS_ENTRY_FUNCTION_C(respond_server_secure);
+    CLASS_ENTRY_FUNCTION_C(respond_connection_secure);
 #endif
     RP_ASSERT(main_loop.data == UV_UNKNOWN);
     return SUCCESS;

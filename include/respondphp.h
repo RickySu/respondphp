@@ -66,6 +66,7 @@ DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
 
 #ifdef HAVE_OPENSSL
 DECLARE_CLASS_ENTRY(respond_server_secure);
+DECLARE_CLASS_ENTRY(respond_connection_secure);
 #endif
 
 void rp_init_routine_manager(int *routine_fd);
@@ -80,7 +81,8 @@ int rp_reactors_count();
 int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data, size_t data_len);
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
-void rp_connection_factory(rp_stream_t *client, zval *connection);
+void rp_connection_connection_factory(rp_stream_t *client, zval *connection);
+void rp_connection_secure_factory(rp_stream_t *client, zval *connection);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_close_cb_release(uv_handle_t* handle);

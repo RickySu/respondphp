@@ -13,7 +13,7 @@ typedef struct {
     rp_write_req_t *close_write_req;
     event_hook_t event_hook;
     zend_object  zo;
-} rp_connection_ext_t;
+} rp_connection_connection_ext_t;
 
 PHP_METHOD(respond_connection_connection, __construct);
 PHP_METHOD(respond_connection_connection, isReadable);

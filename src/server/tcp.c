@@ -115,7 +115,7 @@ static void accepted_cb(zend_object *server, rp_stream_t *client)
 {
     zval connection;
     rp_server_tcp_ext_t *resource = FETCH_RESOURCE(server, rp_server_tcp_ext_t);
-    rp_connection_factory(client, &connection);
+    rp_connection_connection_factory(client, &connection);
     RP_ASSERT(zval_refcount_p(&connection) == 1);
     rp_event_emitter_emit_internal(&resource->event_hook, ZEND_STRL("connect"), 1, &connection);
     RP_ASSERT(zval_refcount_p(&connection) >= 1);

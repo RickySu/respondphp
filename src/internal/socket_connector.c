@@ -41,7 +41,7 @@ static void connection_cb(rp_connector_t *connector, int status)
         return;
     }
 
-    rp_connection_factory(connector->connect_req.handle, &result);
+    rp_connection_connection_factory(connector->connect_req.handle, &result);
     rp_resolve_promise(&connector->promise, &result);
     ZVAL_PTR_DTOR(&connector->promise);
     zend_object_ptr_dtor(connector->zo);
