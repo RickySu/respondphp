@@ -13,10 +13,14 @@ DECLARE_FUNCTION_ENTRY(respond_server_secure) =
 
 static zend_object *create_respond_server_secure_resource(zend_class_entry *class_type);
 static void free_respond_server_secure_resource(zend_object *object);
-static void connection_cb(rp_reactor_t *reactor, int status);
-static void accepted_cb(zend_object *server, rp_stream_t *client);
+static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *resource);
 static void releaseResource(rp_server_secure_ext_t *resource);
-static void server_init(rp_reactor_t *reactor);
+static void ssl_ctx_ht_free(zval *item);
+static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource);
+static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config);
+static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config);
+static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *userdata);
+static int ssl_sni_cb(SSL *ssl, int *ad, void *arg);
 
 CLASS_ENTRY_FUNCTION_D(respond_server_secure)
 {
@@ -27,36 +31,8 @@ CLASS_ENTRY_FUNCTION_D(respond_server_secure)
     zend_class_implements(CLASS_ENTRY(respond_server_secure), 1, CLASS_ENTRY(respond_event_event_emitter_interface));
 }
 
-static void server_init(rp_reactor_t *reactor)
-{
-    char addr_str[INET6_ADDRSTRLEN];
-    uint16_t port;
-    uv_tcp_init(&main_loop, &reactor->handler.tcp);
-    uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr *) &reactor->addr, 0);
-    uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->cb.stream.connection);
-    sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
-    fprintf(stderr, "secure listen: %s:%d\n", addr_str, port);
-}
-
 static void releaseResource(rp_server_secure_ext_t *resource)
 {
-}
-
-static void connection_cb(rp_reactor_t *reactor, int status)
-{
-    if (status < 0) {
-        return;
-    }
-
-    uv_tcp_t *client = (uv_tcp_t*) rp_malloc(sizeof(uv_tcp_t));
-    uv_tcp_init(&main_loop, client);
-    
-    if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
-        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, rp_close_cb_release);
-        return;
-    }
-    
-    uv_close((uv_handle_t *) client, rp_close_cb_release);
 }
 
 static zend_object *create_respond_server_secure_resource(zend_class_entry *ce)
@@ -67,7 +43,13 @@ static zend_object *create_respond_server_secure_resource(zend_class_entry *ce)
     object_properties_init(&resource->zo, ce);    
     resource->zo.handlers = &OBJECT_HANDLER(respond_server_secure);
     rp_event_hook_init(&resource->event_hook);
+    zend_hash_init(&resource->ssl_ctx_ht, 5, ssl_ctx_ht_free, NULL, 0);
     return &resource->zo;
+}
+
+static void ssl_ctx_ht_free(zval *item)
+{
+    SSL_CTX_free(Z_PTR_P(item));
 }
 
 static void free_respond_server_secure_resource(zend_object *object)
@@ -79,34 +61,154 @@ static void free_respond_server_secure_resource(zend_object *object)
     }
     releaseResource(resource);
     rp_event_hook_destroy(&resource->event_hook);
+    zend_hash_destroy(&resource->ssl_ctx_ht);
     zend_object_std_dtor(object);
+}
+
+static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *userdata)
+{
+    zend_string *passphrase = (zend_string *) userdata;
+    size = (passphrase->len > size) ? size : passphrase->len;
+    fprintf(stderr, "pass cb: %p %d %p\n", buf, size, userdata);
+    fprintf(stderr, "pass cb: %.*s\n", passphrase->len, passphrase->val);
+    memcpy(buf, passphrase->val, size);
+    return size;
+}
+
+static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config)
+{
+    int ret;
+    BIO *key_bio;
+    EVP_PKEY *pkey = NULL;
+    zval *pem_pkey = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("local_pk"));
+    zval *passphrase = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("passphrase"));
+
+    if(pem_pkey == NULL || Z_TYPE_P(pem_pkey) != IS_STRING){
+        return 0;
+    }
+
+    convert_to_string(pem_pkey);
+
+    key_bio = BIO_new(BIO_s_mem());
+
+    if(BIO_write(key_bio, Z_STRVAL_P(pem_pkey), Z_STRLEN_P(pem_pkey)) <= 0){
+        BIO_free(key_bio);
+        return 0;
+    }
+
+    if(passphrase && Z_TYPE_P(passphrase) == IS_STRING) {
+        pkey = PEM_read_bio_PrivateKey(key_bio, NULL, ssl_ctx_set_pkey_password_cb, Z_STR_P(passphrase));
+    }
+    else {
+        pkey = PEM_read_bio_PrivateKey(key_bio, NULL, NULL, NULL);
+    }
+
+    BIO_free(key_bio);
+
+    if(pkey == NULL){
+        return 0;
+    }
+
+    ret = SSL_CTX_use_PrivateKey(ctx, pkey);
+    EVP_PKEY_free(pkey);
+    zend_print_zval_r(pem_pkey, 0);
+    return ret;
+}
+
+static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config)
+{
+
+    int ret;
+    BIO *cert_bio;
+    X509 *cert;
+    zval *pem_cert = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("local_cert"));
+
+    if(pem_cert == NULL || Z_TYPE_P(pem_cert) != IS_STRING){
+        return 0;
+    }
+
+    cert_bio = BIO_new(BIO_s_mem());
+
+    if(BIO_write(cert_bio, Z_STRVAL_P(pem_cert), Z_STRLEN_P(pem_cert)) <= 0){
+        BIO_free(cert_bio);
+        return 0;
+    }
+
+    cert = PEM_read_bio_X509_AUX(cert_bio, NULL, NULL, NULL);
+    BIO_free(cert_bio);
+
+    if(cert == NULL){
+        return 0;
+    }
+
+    ret = SSL_CTX_use_certificate(ctx, cert);
+    X509_free(cert);
+    zend_print_zval_r(pem_cert, 0);
+    return ret;
+}
+
+static int ssl_sni_cb(SSL *ssl, int *ad, void *arg)
+{
+
+}
+
+static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
+{
+    HashTable *array_ht;
+    zval *current;
+    SSL_CTX *ctx = NULL;
+    array_ht = Z_ARRVAL_P(array);
+    zend_hash_internal_pointer_reset(array_ht);
+    for(zend_hash_internal_pointer_reset(array_ht); current = zend_hash_get_current_data(array_ht); zend_hash_move_forward(array_ht)) {
+        ctx = SSL_CTX_new(SECURE_SERVER_METHOD());
+        if(!(
+            ssl_ctx_set_pkey(ctx, current) &&
+            ssl_ctx_set_cert(ctx, current)
+        )){
+            fprintf(stderr, "error ctx\n");
+            SSL_CTX_free(ctx);
+            continue;
+        }
+        SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_BOTH);
+        zend_hash_next_index_insert_ptr(&resource->ssl_ctx_ht, ctx);
+        resource->ctx = ctx;
+    }
+
+#ifndef HAVE_TLS_SNI
+    if(resource->ctx){
+        SSL_CTX_set_tlsext_servername_callback(resource->ctx, ssl_sni_cb);
+        SSL_CTX_set_tlsext_servername_arg(resource->ctx, resource);
+    }
+#endif
 }
 
 PHP_METHOD(respond_server_secure, __construct)
 {
     zval *self = getThis();
     zval *socket, *options;
-
     rp_server_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_secure_ext_t);
+    event_hook_t *hook;
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "za", &socket, &options)) {
         return;
     }
 
-    zend_print_zval_r(socket, 0);
-    zend_print_zval_r(options, 0);
+    hook = (event_hook_t *) ((void *) Z_OBJ_P(socket) - sizeof(event_hook_t));
+    fprintf(stderr, "hook:%p\n", hook);
+    rp_event_emitter_on_intrenal_ex(hook, ZEND_STRL("connect"), (rp_event_emitter_internal_cb) accepted_cb, resource);
+    fprintf(stderr, "hook:%p ok\n", hook);
+    fprintf(stderr, "resource:%p\n", resource);
+//    zend_print_zval_r(socket, 0);
+//    zend_print_zval_r(options, 0);
     resource->socket_zo = Z_OBJ_P(socket);
     Z_ADDREF_P(socket);
+
+    ssl_ctx_parse(options, resource);
 }
 
-static void accepted_cb(zend_object *server, rp_stream_t *client)
+static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *resource)
 {
-    zval connection;
-    rp_server_secure_ext_t *resource = FETCH_RESOURCE(server, rp_server_secure_ext_t);
-    rp_connection_factory(client, &connection);
-    RP_ASSERT(zval_refcount_p(&connection) == 1);
-    rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("connect"), 1, &connection);
-    RP_ASSERT(zval_refcount_p(&connection) >= 1);
+    fprintf(stderr, "connect %d %p\n", n_param, resource);
 }
 
 PHP_METHOD(respond_server_secure, close)

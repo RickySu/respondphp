@@ -11,8 +11,8 @@ ZEND_END_ARG_INFO()
 
 typedef struct {
     uint flag;
-    event_hook_t event_hook;
     rp_reactor_t *reactor;
+    event_hook_t event_hook;
     zend_object zo;
 } rp_server_tcp_ext_t;
 

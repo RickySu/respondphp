@@ -2,7 +2,7 @@
 #include "internal/event_emitter.h"
 
 static void rp_event_hook_cache_list_free(zval *hook);
-static void rp_event_hook_cache_free(zval *hook);
+static void rp_event_hook_memory_free(zval *hook);
 
 void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook)
 {
@@ -23,7 +23,7 @@ void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t eve
 
     if((array = zend_hash_str_find(&event_hook->hook_cache, event, event_len)) == NULL) {
         ht_counter = rp_calloc(1, sizeof(ht_counter_t));
-        zend_hash_init(&ht_counter->ht, 5, NULL, rp_event_hook_cache_free, 0);
+        zend_hash_init(&ht_counter->ht, 5, NULL, rp_event_hook_memory_free, 0);
         zend_hash_str_add_new_ptr(&event_hook->hook_cache, event, event_len, &ht_counter->ht);
     }
     else {
@@ -82,6 +82,49 @@ zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event,
     return zend_hash_str_find(Z_ARRVAL_P(&event_hook->hook), event, event_len);
 }
 
+void rp_event_emitter_on_intrenal_ex(event_hook_t *event_hook, const char *event, size_t event_len, rp_event_emitter_internal_cb callback, void *data)
+{
+    zval *array;
+    HashTable *ht;
+    ht_internal_cb_t *internal_cb;
+
+    if((array = zend_hash_str_find(&event_hook->internal_hook, event, event_len)) == NULL) {
+        ht = rp_calloc(1, sizeof(HashTable));
+        zend_hash_init(ht, 5, NULL, rp_event_hook_memory_free, 0);
+        zend_hash_str_add_new_ptr(&event_hook->internal_hook, event, event_len, ht);
+    }
+    else {
+        ht = Z_PTR_P(array);
+    }
+
+    internal_cb = rp_malloc(sizeof(ht_internal_cb_t));
+    internal_cb->callback = callback;
+    internal_cb->data = data;
+fprintf(stderr, "HT: %p\n", ht);
+    zend_hash_next_index_insert_ptr(ht, internal_cb);
+}
+
+void rp_event_emitter_emit_internal(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param)
+{
+    zval *array, *current;
+    HashTable *ht;
+    ht_internal_cb_t *internal_cb;
+
+    if((array = zend_hash_str_find(&event_hook->internal_hook, event, event_len)) != NULL) {
+        ht = Z_PTR_P(array);
+        fprintf(stderr, "emit HT: %p\n", ht);
+
+        zend_hash_internal_pointer_reset(ht);
+        while ((current = zend_hash_get_current_data(ht)) != NULL) {
+            internal_cb = Z_PTR_P(current);
+            internal_cb->callback(n_param, param, internal_cb->data);
+            zend_hash_move_forward(ht);
+        }
+    }
+
+    rp_event_emitter_emit(event_hook, event, event_len, n_param, param);
+}
+
 void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param)
 {
     zval *array, *current, retval;
@@ -100,7 +143,7 @@ void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t e
     }
 }
 
-static void rp_event_hook_cache_free(zval *hook)
+static void rp_event_hook_memory_free(zval *hook)
 {
     rp_free(Z_PTR_P(hook));
 }

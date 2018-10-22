@@ -2,10 +2,17 @@
 #define _RP_INTERNAL_EVENT_EMMITER_H
 #include "interface/event_event_emitter_interface.h"
 
+typedef void (*rp_event_emitter_internal_cb)(int n_param, zval *param, void *data);
+
 typedef struct {
     HashTable ht;
     zend_ulong n;
 } ht_counter_t;
+
+typedef struct {
+    rp_event_emitter_internal_cb callback;
+    void *data;
+} ht_internal_cb_t;
 
 typedef struct {
     HashTable hook_cache;
@@ -18,8 +25,15 @@ void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t ev
 void rp_event_emitter_removeListeners(event_hook_t *event_hook, const char *event, size_t event_len);
 zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event, size_t event_len);
 void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);
+void rp_event_emitter_emit_internal(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);
+void rp_event_emitter_on_intrenal_ex(event_hook_t *event_hook, const char *event, size_t event_len, rp_event_emitter_internal_cb callback, void *data);
 void rp_event_hook_init(event_hook_t *hook);
 void rp_event_hook_destroy(event_hook_t *hook);
+
+static zend_always_inline void rp_event_emitter_on_intrenal(event_hook_t *event_hook, const char *event, size_t event_len, rp_event_emitter_internal_cb callback)
+{
+    rp_event_emitter_on_intrenal_ex(event_hook, event, event_len, callback, NULL);
+}
 
 #define rp_event_hook_clean(hook) \
 do{ \
