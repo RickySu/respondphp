@@ -94,6 +94,17 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 //    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
 }
 
+zend_bool rp_connection_write(rp_connection_connection_ext_t *resource, void *data, size_t data_len)
+{
+    rp_write_req_t *req;
+    req = rp_make_write_req(data, data_len);
+    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->stream->stream, &req->buf, 1, (uv_write_cb) connection_write_cb)){
+        rp_free(req);
+        return 0;
+    }
+    return 1;
+}
+
 void rp_connection_connection_factory(rp_stream_t *stream, zval *connection)
 {
     object_init_ex(connection, CLASS_ENTRY(respond_connection_connection));
@@ -295,12 +306,10 @@ PHP_METHOD(respond_connection_connection, write)
         RETURN_FALSE;
     }
 
-//fprintf(stderr, "write: %d %p\n", getpid(), resource);
-    req = rp_make_write_req(data, data_len);
-    if(uv_write((uv_write_t *) req, (uv_stream_t *) &resource->stream->stream, &req->buf, 1, (uv_write_cb) connection_write_cb)){
-        rp_free(req);
+    if(!rp_connection_write(resource, data, data_len)){
         RETURN_FALSE;
     }
+
     RETURN_TRUE;
 }
 

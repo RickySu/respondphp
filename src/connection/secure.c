@@ -23,14 +23,24 @@ static void releaseResource(rp_connection_secure_ext_t *resource);
 
 static void releaseResource(rp_connection_secure_ext_t *resource)
 {
+    SSL_free(resource->ssl);
+    BIO_free(resource->read_bio);
+    BIO_free(resource->write_bio);
+    zend_object_ptr_dtor(&resource->connection->zo);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_ptr_dtor(&resource->zo);
 }
 
-void rp_connection_secure_factory(rp_stream_t *stream, zval *connection)
+void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure)
 {
-    object_init_ex(connection, CLASS_ENTRY(respond_connection_secure));
-    rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_secure_ext_t);
+    rp_connection_connection_ext_t *connection_resource = FETCH_OBJECT_RESOURCE(connection_connection, rp_connection_connection_ext_t);
+    object_init_ex(connection_secure, CLASS_ENTRY(respond_connection_secure));
+    rp_connection_secure_ext_t *secure_resource = FETCH_OBJECT_RESOURCE(connection_secure, rp_connection_secure_ext_t);
+    Z_ADDREF_P(connection_connection);
+    secure_resource->connection = connection_resource;
+    secure_resource->ssl = ssl;
+    secure_resource->read_bio = BIO_new(BIO_s_mem());
+    secure_resource->write_bio = BIO_new(BIO_s_mem());
 }
 
 static zend_object *create_respond_connection_secure_resource(zend_class_entry *ce)

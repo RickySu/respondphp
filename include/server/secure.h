@@ -1,9 +1,6 @@
 #ifndef _RP_SERVER_SECURE_H
 #define _RP_SERVER_SECURE_H
 #ifdef HAVE_OPENSSL
-
-#include <openssl/ssl.h>
-#include <openssl/x509v3.h>
 #include "ssl_detect.h"
 #include "internal/event_emitter.h"
 

@@ -1,9 +1,7 @@
 #ifndef _RP_RESPONDPHP_H
 #define _RP_RESPONDPHP_H
 
-#ifdef HAVE_CONFIG_H
-    #include "config.h"
-#endif
+#include "config.h"
 
 #ifdef HAVE_DEBUG
     #define RP_ASSERT(exp) ZEND_ASSERT(exp)
@@ -22,6 +20,11 @@
     #define rp_calloc ecalloc
     #define rp_realloc erealloc
     #define rp_free efree
+#endif
+
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#include <openssl/x509v3.h>
 #endif
 
 #include <sys/prctl.h>
@@ -82,10 +85,13 @@ int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
 void rp_connection_connection_factory(rp_stream_t *client, zval *connection);
-void rp_connection_secure_factory(rp_stream_t *client, zval *connection);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_close_cb_release(uv_handle_t* handle);
+
+#ifdef HAVE_OPENSSL
+void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);
+#endif
 
 static zend_always_inline void rp_reject_promise(zval *promise, zval *result)
 {

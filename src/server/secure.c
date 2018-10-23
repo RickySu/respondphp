@@ -1,7 +1,8 @@
 #include "respondphp.h"
-
 #ifdef HAVE_OPENSSL
 #include "server/secure.h"
+#include "connection/connection.h"
+#include "connection/secure.h"
 
 DECLARE_FUNCTION_ENTRY(respond_server_secure) =
 {
@@ -206,9 +207,12 @@ PHP_METHOD(respond_server_secure, __construct)
     ssl_ctx_parse(options, resource);
 }
 
-static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *resource)
+static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *server_resource)
 {
-    fprintf(stderr, "connect %d %p\n", n_param, resource);
+    zval connection_secure;
+    fprintf(stderr, "connect %d %p\n", n_param, server_resource);
+    rp_connection_secure_factory(SSL_new(server_resource->ctx), &param[0], &connection_secure);
+//    ZVAL_PTR_DTOR(&connection_secure);
 }
 
 PHP_METHOD(respond_server_secure, close)

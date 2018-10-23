@@ -4,11 +4,16 @@
 #include "internal/socket_connection.h"
 #include "interface/stream_readable_stream_interface.h"
 #include "interface/stream_writable_stream_interface.h"
+#include "connection/connection.h"
 
 CLASS_ENTRY_FUNCTION_D(respond_connection_secure);
 
 typedef struct {
     uint flag;
+    SSL *ssl;
+    BIO *read_bio;
+    BIO *write_bio;
+    rp_connection_connection_ext_t *connection;
     event_hook_t event_hook;
     zend_object  zo;
 } rp_connection_secure_ext_t;
