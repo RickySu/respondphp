@@ -13,6 +13,8 @@ typedef struct {
     SSL *ssl;
     BIO *read_bio;
     BIO *write_bio;
+    rp_event_emitter_internal_cb handshake;
+    void *creater_resource;
     rp_connection_connection_ext_t *connection;
     event_hook_t event_hook;
     zend_object  zo;
@@ -33,4 +35,24 @@ TRAIT_FUNCTION_ARG_INFO(respond_connection_secure, event_emitter);
 
 TRAIT_PHP_METHOD(respond_connection_secure, socket_connection);
 TRAIT_FUNCTION_ARG_INFO(respond_connection_secure, socket_connection);
+
+
+static zend_always_inline int write_bio_to_socket(rp_connection_secure_ext_t *resource)
+{
+    char buffer[256];
+    int n_read, ret;
+
+    while(1){
+        if((n_read = BIO_read(resource->write_bio, buffer, sizeof(buffer))) <= 0){
+            ret = 0;
+            break;
+        }
+        if(!(ret = rp_connection_write(resource->connection, buffer, n_read))){
+            break;
+        }
+    }
+
+    return ret;
+}
+
 #endif //RP_CONNECTION_SECURE_H

@@ -2,6 +2,7 @@
 #include "respondphp.h"
 
 #ifdef HAVE_OPENSSL
+#include "connection/connection.h"
 #include "connection/secure.h"
 
 DECLARE_FUNCTION_ENTRY(respond_connection_secure) =
@@ -20,6 +21,7 @@ DECLARE_FUNCTION_ENTRY(respond_connection_secure) =
 static zend_object *create_respond_connection_secure_resource(zend_class_entry *class_type);
 static void free_respond_connection_secure_resource(zend_object *object);
 static void releaseResource(rp_connection_secure_ext_t *resource);
+static int write_bio_to_socket(rp_connection_secure_ext_t *resource);
 
 static void releaseResource(rp_connection_secure_ext_t *resource)
 {
@@ -29,6 +31,14 @@ static void releaseResource(rp_connection_secure_ext_t *resource)
     zend_object_ptr_dtor(&resource->connection->zo);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_ptr_dtor(&resource->zo);
+}
+
+static void read_cb(int n_param, zval *param)
+{
+    rp_connection_secure_ext_t *connection_secure_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_connection_secure_ext_t);
+    if(connection_secure_resource->handshake){
+        connection_secure_resource->handshake(n_param, param, connection_secure_resource);
+    }
 }
 
 void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure)
@@ -41,6 +51,8 @@ void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *c
     secure_resource->ssl = ssl;
     secure_resource->read_bio = BIO_new(BIO_s_mem());
     secure_resource->write_bio = BIO_new(BIO_s_mem());
+    SSL_set_bio(secure_resource->ssl, secure_resource->read_bio, secure_resource->write_bio);
+    rp_event_emitter_on_intrenal(&secure_resource->event_hook, ZEND_STRL("data"), read_cb);
 }
 
 static zend_object *create_respond_connection_secure_resource(zend_class_entry *ce)

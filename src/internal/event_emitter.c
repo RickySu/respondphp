@@ -71,6 +71,12 @@ void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t ev
     zend_hash_index_del(&ht_counter->ht, Z_LVAL(retval));
 }
 
+void rp_event_emitter_removeListeners_internal(event_hook_t *event_hook, const char *event, size_t event_len)
+{
+    zend_hash_str_del(Z_ARRVAL_P(&event_hook->hook), event, event_len);
+    zend_hash_str_del(&event_hook->hook_cache, event, event_len);
+}
+
 void rp_event_emitter_removeListeners(event_hook_t *event_hook, const char *event, size_t event_len)
 {
     zend_hash_str_del(Z_ARRVAL_P(&event_hook->hook), event, event_len);

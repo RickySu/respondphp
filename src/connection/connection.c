@@ -82,11 +82,11 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
         string->len = nread;
         string->val[nread] = '\0';
         ZVAL_NEW_STR(&param[1], string);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("data"), 2, param);
+        rp_event_emitter_emit_internal(&resource->event_hook, ZEND_STRL("data"), 2, param);
     }
     else{
         ZVAL_LONG(&param[1], nread);
-        rp_event_emitter_emit(&resource->event_hook, ZEND_STRL("error"), 2, param);
+        rp_event_emitter_emit_internal(&resource->event_hook, ZEND_STRL("error"), 2, param);
         connection_close(resource);
     }
 

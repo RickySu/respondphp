@@ -2,7 +2,7 @@
 #define RESPONDPHP_SSL_DETECT_H
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-#define SECURE_SERVER_METHOD TLSv1_2_method
+#define SECURE_SERVER_METHOD TLSv1_method
 #else
 #define SECURE_SERVER_METHOD TLS_server_method
 #endif

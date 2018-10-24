@@ -23,6 +23,7 @@ typedef struct {
 void rp_event_emitter_on(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook);
 void rp_event_emitter_off(event_hook_t *event_hook, const char *event, size_t event_len, zval *hook);
 void rp_event_emitter_removeListeners(event_hook_t *event_hook, const char *event, size_t event_len);
+void rp_event_emitter_removeListeners_internal(event_hook_t *event_hook, const char *event, size_t event_len);
 zval *rp_event_emitter_getListeners(event_hook_t *event_hook, const char *event, size_t event_len);
 void rp_event_emitter_emit(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);
 void rp_event_emitter_emit_internal(event_hook_t *event_hook, const char *event, size_t event_len, int n_param, zval *param);

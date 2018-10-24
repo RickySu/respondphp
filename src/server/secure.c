@@ -21,7 +21,7 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource);
 static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config);
 static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config);
 static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *userdata);
-static int ssl_sni_cb(SSL *ssl, int *ad, void *arg);
+static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource);
 
 CLASS_ENTRY_FUNCTION_D(respond_server_secure)
 {
@@ -118,7 +118,6 @@ static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config)
 
 static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config)
 {
-
     int ret;
     BIO *cert_bio;
     X509 *cert;
@@ -148,19 +147,38 @@ static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config)
     return ret;
 }
 
-static int ssl_sni_cb(SSL *ssl, int *ad, void *arg)
+static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource)
 {
+    zval *current = NULL;
+    zend_string *ctx_hostname;
+    zend_ulong index = 0;
+    const char *servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    fprintf(stderr, "sni cb %s\n", servername);
 
+    for(zend_hash_internal_pointer_reset(&resource->ssl_ctx_ht); current = zend_hash_get_current_data(&resource->ssl_ctx_ht); zend_hash_move_forward(&resource->ssl_ctx_ht)) {
+        if(zend_hash_get_current_key(&resource->ssl_ctx_ht, &ctx_hostname, index) == HASH_KEY_IS_STRING){
+            fprintf(stderr, "host: %s %d\n", ctx_hostname->val, index);
+            if(servername && strncmp(ctx_hostname->val, servername, ctx_hostname->len) == 0){
+                fprintf(stderr, "sni match %s\n", servername);
+                break;
+            }
+        }
+    }
+
+    if(current) {
+        fprintf(stderr, "sni add %p\n", Z_PTR_P(current));
+        SSL_set_SSL_CTX(ssl, Z_PTR_P(current));
+    }
+    return SSL_TLSEXT_ERR_OK;
 }
 
 static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
 {
-    HashTable *array_ht;
-    zval *current;
+    HashTable *array_ht = Z_ARRVAL_P(array);
+    zval *current, *hostname;
     SSL_CTX *ctx = NULL;
-    array_ht = Z_ARRVAL_P(array);
-    zend_hash_internal_pointer_reset(array_ht);
     for(zend_hash_internal_pointer_reset(array_ht); current = zend_hash_get_current_data(array_ht); zend_hash_move_forward(array_ht)) {
+        hostname = zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("hostname"));
         ctx = SSL_CTX_new(SECURE_SERVER_METHOD());
         if(!(
             ssl_ctx_set_pkey(ctx, current) &&
@@ -171,14 +189,24 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
             continue;
         }
         SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_BOTH);
-        zend_hash_next_index_insert_ptr(&resource->ssl_ctx_ht, ctx);
+
+        if(!hostname || Z_TYPE_P(hostname) != IS_STRING){
+            zend_hash_str_update_ptr(&resource->ssl_ctx_ht, ZEND_STRL("*"), ctx);
+        }
+        else{
+            fprintf(stderr, "add %p %.*s\n", ctx, Z_STRLEN_P(hostname), Z_STRVAL_P(hostname));
+            zend_hash_update_ptr(&resource->ssl_ctx_ht, Z_STR_P(hostname), ctx);
+        }
+
         resource->ctx = ctx;
     }
 
-#ifndef HAVE_TLS_SNI
+#ifdef HAVE_TLS_SNI
     if(resource->ctx){
+        fprintf(stderr, "sni init\n");
         SSL_CTX_set_tlsext_servername_callback(resource->ctx, ssl_sni_cb);
         SSL_CTX_set_tlsext_servername_arg(resource->ctx, resource);
+        fprintf(stderr, "sni init done\n");
     }
 #endif
 }
@@ -207,11 +235,58 @@ PHP_METHOD(respond_server_secure, __construct)
     ssl_ctx_parse(options, resource);
 }
 
+static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
+{
+    int ret, err;
+    zval connection_secure;
+    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
+    fprintf(stderr, "handshake read %d %p\n", Z_STRLEN(param[1]), connection_secure_resource);
+
+    if(SSL_is_init_finished(connection_secure_resource->ssl)){
+        fprintf(stderr, "ssl init ok\n");
+        return;
+    }
+
+    if((ret = SSL_do_handshake(connection_secure_resource->ssl)) == 1){
+        connection_secure_resource->handshake = NULL;
+        fprintf(stderr, "handshake ok\n");
+        ZVAL_OBJ(&connection_secure, &connection_secure_resource->zo);
+        zval_add_ref(&connection_secure);
+        rp_event_emitter_emit_internal(&((rp_server_secure_ext_t *)connection_secure_resource->creater_resource)->event_hook, ZEND_STRL("connect"), 1, &connection_secure);
+        ZVAL_PTR_DTOR(&connection_secure);
+        return;
+    }
+
+    write_bio_to_socket(connection_secure_resource);
+    err = SSL_get_error(connection_secure_resource->ssl, ret);
+    switch(err){
+        case SSL_ERROR_WANT_READ:
+            fprintf(stderr, "ssl want read\n");
+            break;
+        case SSL_ERROR_WANT_WRITE:
+            fprintf(stderr, "ssl want write:%d\n", err);
+//            write_bio_to_socket(connection_secure_resource);
+            break;
+        default:
+            fprintf(stderr, "ssl error:%d\n", err);
+//            write_bio_to_socket(connection_secure_resource);
+            break;
+    }
+}
+
 static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *server_resource)
 {
+    rp_connection_connection_ext_t *connection_connection_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_connection_connection_ext_t);
+    rp_connection_secure_ext_t *connection_secure_resource;
     zval connection_secure;
     fprintf(stderr, "connect %d %p\n", n_param, server_resource);
     rp_connection_secure_factory(SSL_new(server_resource->ctx), &param[0], &connection_secure);
+    connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_connection_secure_ext_t);
+    connection_secure_resource->creater_resource = server_resource;
+    connection_secure_resource->handshake = handshake_read_cb;
+    SSL_set_accept_state(connection_secure_resource->ssl);
+//    write_bio_to_socket(connection_secure_resource);
+    fprintf(stderr, "accept cb:%p\n", connection_secure_resource);
 //    ZVAL_PTR_DTOR(&connection_secure);
 }
 
