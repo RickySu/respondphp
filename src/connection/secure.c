@@ -33,11 +33,45 @@ static void releaseResource(rp_connection_secure_ext_t *resource)
     zend_object_ptr_dtor(&resource->zo);
 }
 
-static void read_cb(int n_param, zval *param)
+static void read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
 {
-    rp_connection_secure_ext_t *connection_secure_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_connection_secure_ext_t);
+    int n_read;
+    zend_string *buffer;
+    zval data[2];
+    rp_connection_connection_ext_t *connection_connection_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_connection_connection_ext_t);
+
+    fprintf(stderr, "sec connection read_cb %d\n", Z_STRLEN(param[1]));
+
+    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
+
     if(connection_secure_resource->handshake){
         connection_secure_resource->handshake(n_param, param, connection_secure_resource);
+
+        if(!SSL_is_init_finished(connection_secure_resource->ssl)){
+            return;
+        }
+
+        fprintf(stderr, "ssl init ok\n");
+    }
+
+    ZVAL_OBJ(&data[0], &connection_secure_resource->zo);
+
+    while(1) {
+        buffer = zend_string_alloc(256, 0);
+        n_read = SSL_read(connection_secure_resource->ssl, buffer->val, 255);
+        fprintf(stderr, "read data: %d\n", n_read);
+
+        if(n_read <= 0) {
+            zend_string_release(buffer);
+            break;
+        }
+
+        buffer->len = n_read;
+        buffer->val[n_read] = '\0';
+        ZVAL_NEW_STR(&data[1], buffer);
+        fprintf(stderr, "read: %.*s\n", Z_STRLEN(data[1]), Z_STRVAL(data[1]));
+        rp_event_emitter_emit_internal(&connection_secure_resource->event_hook, ZEND_STRL("data"), 2, data);
+        zend_string_release(buffer);
     }
 }
 
@@ -52,7 +86,7 @@ void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *c
     secure_resource->read_bio = BIO_new(BIO_s_mem());
     secure_resource->write_bio = BIO_new(BIO_s_mem());
     SSL_set_bio(secure_resource->ssl, secure_resource->read_bio, secure_resource->write_bio);
-    rp_event_emitter_on_intrenal(&secure_resource->event_hook, ZEND_STRL("data"), read_cb);
+    rp_event_emitter_on_intrenal_ex(&connection_resource->event_hook, ZEND_STRL("data"), read_cb, secure_resource);
 }
 
 static zend_object *create_respond_connection_secure_resource(zend_class_entry *ce)

@@ -239,13 +239,8 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
 {
     int ret, err;
     zval connection_secure;
-    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
+//    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
     fprintf(stderr, "handshake read %d %p\n", Z_STRLEN(param[1]), connection_secure_resource);
-
-    if(SSL_is_init_finished(connection_secure_resource->ssl)){
-        fprintf(stderr, "ssl init ok\n");
-        return;
-    }
 
     if((ret = SSL_do_handshake(connection_secure_resource->ssl)) == 1){
         connection_secure_resource->handshake = NULL;
@@ -254,7 +249,6 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
         zval_add_ref(&connection_secure);
         rp_event_emitter_emit_internal(&((rp_server_secure_ext_t *)connection_secure_resource->creater_resource)->event_hook, ZEND_STRL("connect"), 1, &connection_secure);
         ZVAL_PTR_DTOR(&connection_secure);
-        return;
     }
 
     write_bio_to_socket(connection_secure_resource);
@@ -265,11 +259,9 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
             break;
         case SSL_ERROR_WANT_WRITE:
             fprintf(stderr, "ssl want write:%d\n", err);
-//            write_bio_to_socket(connection_secure_resource);
             break;
         default:
             fprintf(stderr, "ssl error:%d\n", err);
-//            write_bio_to_socket(connection_secure_resource);
             break;
     }
 }
