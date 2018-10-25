@@ -18,8 +18,8 @@ static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *resour
 static void releaseResource(rp_server_secure_ext_t *resource);
 static void ssl_ctx_ht_free(zval *item);
 static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource);
-static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config);
-static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config);
+static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *pem_pkey, zval *passphrase);
+static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert);
 static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *userdata);
 static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource);
 
@@ -76,13 +76,11 @@ static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *u
     return size;
 }
 
-static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config)
+static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *pem_pkey, zval *passphrase)
 {
     int ret;
     BIO *key_bio;
     EVP_PKEY *pkey = NULL;
-    zval *pem_pkey = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("local_pk"));
-    zval *passphrase = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("passphrase"));
 
     if(pem_pkey == NULL || Z_TYPE_P(pem_pkey) != IS_STRING){
         return 0;
@@ -116,12 +114,11 @@ static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *config)
     return ret;
 }
 
-static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *config)
+static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert)
 {
     int ret;
     BIO *cert_bio;
     X509 *cert;
-    zval *pem_cert = zend_hash_str_find(Z_ARRVAL_P(config), ZEND_STRL("local_cert"));
 
     if(pem_cert == NULL || Z_TYPE_P(pem_cert) != IS_STRING){
         return 0;
@@ -178,11 +175,11 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
     zval *current, *hostname;
     SSL_CTX *ctx = NULL;
     for(zend_hash_internal_pointer_reset(array_ht); current = zend_hash_get_current_data(array_ht); zend_hash_move_forward(array_ht)) {
-        hostname = zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("hostname"));
         ctx = SSL_CTX_new(SECURE_SERVER_METHOD());
+
         if(!(
-            ssl_ctx_set_pkey(ctx, current) &&
-            ssl_ctx_set_cert(ctx, current)
+            ssl_ctx_set_pkey(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_pk")), zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("passphrase"))) &&
+            ssl_ctx_set_cert(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_cert")))
         )){
             fprintf(stderr, "error ctx\n");
             SSL_CTX_free(ctx);
@@ -190,6 +187,7 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
         }
         SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_BOTH);
 
+        hostname = zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("hostname"));
         if(!hostname || Z_TYPE_P(hostname) != IS_STRING){
             zend_hash_str_update_ptr(&resource->ssl_ctx_ht, ZEND_STRL("*"), ctx);
         }
