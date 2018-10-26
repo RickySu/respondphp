@@ -37,14 +37,15 @@ TRAIT_PHP_METHOD(respond_connection_secure, socket_connection);
 TRAIT_FUNCTION_ARG_INFO(respond_connection_secure, socket_connection);
 
 
-static zend_always_inline int write_bio_to_socket(rp_connection_secure_ext_t *resource)
+static zend_always_inline zend_bool write_bio_to_socket(rp_connection_secure_ext_t *resource)
 {
     char buffer[256];
-    int n_read, ret;
+    int n_read;
+    zend_bool ret;
 
     while(1){
         if((n_read = BIO_read(resource->write_bio, buffer, sizeof(buffer))) <= 0){
-            ret = 0;
+            ret = 1;
             break;
         }
         if(!(ret = rp_connection_write(resource->connection, buffer, n_read))){

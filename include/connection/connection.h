@@ -32,4 +32,5 @@ TRAIT_PHP_METHOD(respond_connection_connection, socket_connection);
 TRAIT_FUNCTION_ARG_INFO(respond_connection_connection, socket_connection);
 
 zend_bool rp_connection_write(rp_connection_connection_ext_t *resource, void *data, size_t data_len);
+zend_bool rp_connection_shutdown(rp_connection_connection_ext_t *resource);
 #endif //RP_CONNECTION_CONNECTION_H
