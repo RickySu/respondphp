@@ -22,6 +22,7 @@ static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *pem_pkey, zval *passphrase
 static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert);
 static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *userdata);
 static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource);
+static void ssl_set_ciphers(zval *pStruct, rp_server_secure_ext_t *resource);
 
 CLASS_ENTRY_FUNCTION_D(respond_server_secure)
 {
@@ -235,6 +236,17 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
 #endif
 }
 
+static void ssl_set_ciphers(zval *cipher_list, rp_server_secure_ext_t *resource)
+{
+    char *cipher_list_string = "DEFAULT";
+
+    if(cipher_list) {
+        cipher_list_string = Z_STRVAL_P(cipher_list);
+    }
+
+    SSL_CTX_set_cipher_list(resource->ctx, cipher_list_string);
+}
+
 PHP_METHOD(respond_server_secure, __construct)
 {
     zval *self = getThis();
@@ -255,8 +267,8 @@ PHP_METHOD(respond_server_secure, __construct)
 //    zend_print_zval_r(options, 0);
     resource->socket_zo = Z_OBJ_P(socket);
     Z_ADDREF_P(socket);
-
-    ssl_ctx_parse(options, resource);
+    ssl_ctx_parse(zend_hash_str_find(Z_ARRVAL_P(options), ZEND_STRL("ssl")), resource);
+    ssl_set_ciphers(zend_hash_str_find(Z_ARRVAL_P(options), ZEND_STRL("ciphers")), resource);
 }
 
 static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
