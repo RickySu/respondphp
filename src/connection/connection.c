@@ -22,16 +22,21 @@ static zend_object *create_respond_connection_connection_resource(zend_class_ent
 static void free_respond_connection_connection_resource(zend_object *object);
 static void releaseResource(rp_connection_connection_ext_t *resource);
 static void connection_shutdown_cb(uv_shutdown_t* req, int status);
+static zend_bool connection_close(rp_connection_connection_ext_t *resource);
+static zend_bool connection_write(rp_connection_connection_ext_t *resource, void *data, size_t data_len);
+static zend_bool connection_shutdown(rp_connection_connection_ext_t *resource);
 
-static zend_always_inline void connection_close(rp_connection_connection_ext_t *resource)
+static zend_bool connection_close(rp_connection_connection_ext_t *resource)
 {
     if(resource->flag & RP_CONNECTION_CLOSED){
-        return;
+        return 0;
     }
+
     resource->flag |= RP_CONNECTION_CLOSED;
 //    fprintf(stderr, "%p %d close\n", resource, getpid());
     uv_close((uv_handle_t *) resource->stream, connection_close_cb);
 //    fprintf(stderr, "%p %d close end\n", resource, getpid());
+    return 1;
 }
 
 static void connection_write_cb(rp_write_req_t *req, int status)
@@ -96,7 +101,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 //    fprintf(stderr, "%p %d %p buffer free\n", resource, getpid(), buf->base);
 }
 
-zend_bool rp_connection_shutdown(rp_connection_connection_ext_t *resource)
+zend_bool connection_shutdown(rp_connection_connection_ext_t *resource)
 {
     uv_shutdown_t *shutdown_req;
 
@@ -109,7 +114,7 @@ zend_bool rp_connection_shutdown(rp_connection_connection_ext_t *resource)
     return uv_shutdown(shutdown_req, (uv_stream_t *) &resource->stream->stream, (uv_shutdown_cb) connection_shutdown_cb) == 0;
 }
 
-zend_bool rp_connection_write(rp_connection_connection_ext_t *resource, void *data, size_t data_len)
+zend_bool connection_write(rp_connection_connection_ext_t *resource, void *data, size_t data_len)
 {
     rp_write_req_t *req;
 
@@ -129,6 +134,10 @@ void rp_connection_connection_factory(rp_stream_t *stream, zval *connection)
 {
     object_init_ex(connection, CLASS_ENTRY(respond_connection_connection));
     rp_connection_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(connection, rp_connection_connection_ext_t);
+    RP_ASSERT(&resource->connection_methods == resource);
+    resource->connection_methods.write = connection_write;
+    resource->connection_methods.shutdown = connection_shutdown;
+    resource->connection_methods.close = connection_close;
     resource->stream = stream;
     stream->connection_zo = Z_OBJ_P(connection);
     uv_read_start((uv_stream_t*) stream, rp_alloc_buffer_zend_string, read_cb);
@@ -283,11 +292,11 @@ PHP_METHOD(respond_connection_connection, close)
         RETURN_FALSE;
     }
 
-    if(resource->flag & RP_CONNECTION_CLOSED){
+    if(!resource->connection_methods.close(resource)){
         RETURN_FALSE;
     }
 
-    connection_close(resource);
+    RETURN_TRUE;
 }
 
 PHP_METHOD(respond_connection_connection, isReadable)
@@ -322,7 +331,7 @@ PHP_METHOD(respond_connection_connection, write)
         return;
     }
 
-    if(!rp_connection_write(resource, data, data_len)){
+    if(!resource->connection_methods.write(resource, data, data_len)){
         RETURN_FALSE;
     }
 
@@ -344,12 +353,12 @@ PHP_METHOD(respond_connection_connection, end)
     }
 
     if(data != NULL) {
-        if(!rp_connection_write(resource, data, data_len)){
+        if(!resource->connection_methods.write(resource, data, data_len)){
             RETURN_FALSE;
         }
     }
 
-    rp_connection_shutdown(resource);
+    resource->connection_methods.shutdown(resource);
 
     RETURN_TRUE;
 }

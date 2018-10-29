@@ -8,6 +8,7 @@
 struct rp_reactor_s;
 struct rp_stream_s;
 struct rp_reactor_s;
+struct rp_connection_methods_s;
 
 typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_type_t;
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
@@ -19,6 +20,11 @@ typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, 
 typedef uv_connection_cb rp_connection_cb;
 typedef uv_udp_recv_cb rp_recv_cb;
 
+typedef struct rp_connection_methods_s{
+    zend_bool (*write)(struct rp_connection_methods_s *resource, void *data, size_t data_len);
+    zend_bool (*shutdown)(struct rp_connection_methods_s *resource);
+    zend_bool (*close)(struct rp_connection_methods_s *resource);
+} rp_connection_methods_t;
 
 typedef union {
     uv_tcp_t  tcp;

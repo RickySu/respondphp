@@ -25,6 +25,35 @@ static zend_bool write_bio_to_socket(rp_connection_secure_ext_t *resource);
 static void connection_close_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource);
 static void connection_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource);
 static void connection_write_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource);
+static zend_bool connection_write(rp_connection_secure_ext_t *resource, void *data, size_t data_len);
+static zend_bool connection_shutdown(rp_connection_secure_ext_t *resource);
+static zend_bool connection_close(rp_connection_secure_ext_t *resource);
+
+static zend_bool connection_close(rp_connection_secure_ext_t *resource)
+{
+    if(!(resource->connection->connection_methods.close(resource))){
+        return 0;
+    }
+    return 1;
+}
+
+static zend_bool connection_shutdown(rp_connection_secure_ext_t *resource)
+{
+    if(!resource->connection->connection_methods.shutdown(resource->connection)){
+        return 0;
+    }
+
+    return 1;
+}
+static zend_bool connection_write(rp_connection_secure_ext_t *resource, void *data, size_t data_len)
+{
+    if(SSL_write(resource->ssl, data, data_len) > 0) {
+        write_bio_to_socket(resource);
+        return 1;
+    }
+
+    return 0;
+}
 
 static void releaseResource(rp_connection_secure_ext_t *resource)
 {
@@ -100,7 +129,11 @@ void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *c
     rp_connection_connection_ext_t *connection_resource = FETCH_OBJECT_RESOURCE(connection_connection, rp_connection_connection_ext_t);
     object_init_ex(connection_secure, CLASS_ENTRY(respond_connection_secure));
     rp_connection_secure_ext_t *secure_resource = FETCH_OBJECT_RESOURCE(connection_secure, rp_connection_secure_ext_t);
+    RP_ASSERT(&secure_resource->connection_methods == secure_resource);
     Z_ADDREF_P(connection_connection);
+    secure_resource->connection_methods.write = connection_write;
+    secure_resource->connection_methods.shutdown = connection_shutdown;
+    secure_resource->connection_methods.close = connection_close;
     secure_resource->connection = connection_resource;
     secure_resource->ssl = ssl;
     secure_resource->read_bio = BIO_new(BIO_s_mem());
@@ -228,8 +261,10 @@ PHP_METHOD(respond_connection_secure, close)
     zval connection;
     zval *self = getThis();
     rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_secure_ext_t);
-    ZVAL_OBJ(&connection, &resource->connection->zo);
-    zend_call_method_with_0_params(&connection, NULL, NULL, "close", return_value);
+    if(!resource->connection_methods.close(resource)){
+        RETURN_FALSE
+    }
+    RETURN_TRUE;
 }
 
 PHP_METHOD(respond_connection_secure, isReadable)
@@ -261,12 +296,11 @@ PHP_METHOD(respond_connection_secure, write)
         return;
     }
 
-    if(SSL_write(resource->ssl, data->val, data->len) > 0) {
-        write_bio_to_socket(resource);
-        RETURN_TRUE;
+    if(!resource->connection_methods.write(resource, data->val, data->len)){
+        RETURN_FALSE;
     }
 
-    RETURN_FALSE;
+    RETURN_TRUE;
 }
 
 PHP_METHOD(respond_connection_secure, end)
@@ -280,11 +314,11 @@ PHP_METHOD(respond_connection_secure, end)
         return;
     }
 
-    if(data && (SSL_write(resource->ssl, data->val, data->len) <= 0 || !write_bio_to_socket(resource))) {
+    if(data && !resource->connection_methods.write(resource, data->val, data->len)) {
         RETURN_FALSE;
     }
 
-    if(!rp_connection_shutdown(resource->connection)){
+    if(!resource->connection_methods.shutdown(resource->connection)){
         RETURN_FALSE;
     }
 

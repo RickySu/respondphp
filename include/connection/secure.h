@@ -9,6 +9,7 @@
 CLASS_ENTRY_FUNCTION_D(respond_connection_secure);
 
 typedef struct {
+    rp_connection_methods_t connection_methods;
     uint flag;
     SSL *ssl;
     BIO *read_bio;
@@ -48,7 +49,7 @@ static zend_always_inline zend_bool write_bio_to_socket(rp_connection_secure_ext
             ret = 1;
             break;
         }
-        if(!(ret = rp_connection_write(resource->connection, buffer, n_read))){
+        if(!(ret = resource->connection->connection_methods.write(resource->connection, buffer, n_read))){
             break;
         }
     }
