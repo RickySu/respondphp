@@ -116,7 +116,7 @@ static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *pem_pkey, zval *passphrase
 
 static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert)
 {
-    int ret;
+    long status;
     BIO *cert_bio;
     X509 *cert;
 
@@ -132,16 +132,42 @@ static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert)
     }
 
     cert = PEM_read_bio_X509_AUX(cert_bio, NULL, NULL, NULL);
-    BIO_free(cert_bio);
 
     if(cert == NULL){
+        BIO_free(cert_bio);
         return 0;
     }
 
-    ret = SSL_CTX_use_certificate(ctx, cert);
-    X509_free(cert);
+    if(SSL_CTX_use_certificate(ctx, cert) == 0){
+        X509_free(cert);
+        BIO_free(cert_bio);
+        return 0;
+    }
+//    X509_free(cert);
+
+    while(1){
+        cert = PEM_read_bio_X509(cert_bio, NULL, NULL, NULL);
+
+        if(cert == NULL){
+            break;
+        }
+
+#ifdef SSL_CTRL_CHAIN_CERT
+        status = SSL_CTX_add0_chain_cert(ctx, cert);
+#else
+        status = SSL_CTX_add_extra_chain_cert(ctx, cert);
+#endif
+        if(status == 0){
+            X509_free(cert);
+            BIO_free(cert_bio);
+            return 0;
+        }
+    }
+
     zend_print_zval_r(pem_cert, 0);
-    return ret;
+    X509_free(cert);
+    BIO_free(cert_bio);
+    return 1;
 }
 
 static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource)
