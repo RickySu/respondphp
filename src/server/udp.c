@@ -192,14 +192,13 @@ PHP_METHOD(respond_server_udp, on)
 {
     zval *self = getThis();
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
         return;
     }
-    rp_event_emitter_on(&resource->event_hook, event, event_len, hook);
+    rp_event_emitter_on(&resource->event_hook, event->val, event->len, hook);
 //    zend_print_zval_r(&resource->event_hook.hook, 0);
 }
 
@@ -207,28 +206,26 @@ PHP_METHOD(respond_server_udp, off)
 {
     zval *self = getThis();
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
         return;
     }
-    rp_event_emitter_off(&resource->event_hook, event, event_len, hook);
+    rp_event_emitter_off(&resource->event_hook, event->val, event->len, hook);
 }
 
 PHP_METHOD(respond_server_udp, removeListeners)
 {
     zval *self = getThis();
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
         return;
     }
 
-    rp_event_emitter_removeListeners(&resource->event_hook, event, event_len);
+    rp_event_emitter_removeListeners(&resource->event_hook, event->val, event->len);
 }
 
 PHP_METHOD(respond_server_udp, getListeners)
@@ -236,14 +233,13 @@ PHP_METHOD(respond_server_udp, getListeners)
     zval *self = getThis();
     zval *listeners;
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
         return;
     }
 
-    listeners = rp_event_emitter_getListeners(&resource->event_hook, event, event_len);
+    listeners = rp_event_emitter_getListeners(&resource->event_hook, event->val, event->len);
 
     if(listeners == NULL){
         RETURN_NULL();

@@ -182,44 +182,41 @@ PHP_METHOD(respond_connection_secure, on)
 {
     zval *self = getThis();
     rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_secure_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
         return;
     }
 
-    rp_event_emitter_on(&resource->event_hook, event, event_len, hook);
+    rp_event_emitter_on(&resource->event_hook, event->val, event->len, hook);
 }
 
 PHP_METHOD(respond_connection_secure, off)
 {
     zval *self = getThis();
     rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_secure_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
     zval *hook;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &event, &event_len, &hook)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sz", &event, &hook)) {
         return;
     }
 
-    rp_event_emitter_off(&resource->event_hook, event, event_len, hook);
+    rp_event_emitter_off(&resource->event_hook, event->val, event->len, hook);
 }
 
 PHP_METHOD(respond_connection_secure, removeListeners)
 {
     zval *self = getThis();
     rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_secure_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
         return;
     }
 
-    rp_event_emitter_removeListeners(&resource->event_hook, event, event_len);
+    rp_event_emitter_removeListeners(&resource->event_hook, event->val, event->len);
 }
 
 PHP_METHOD(respond_connection_secure, getListeners)
@@ -227,14 +224,13 @@ PHP_METHOD(respond_connection_secure, getListeners)
     zval *self = getThis();
     zval *listeners;
     rp_connection_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connection_secure_ext_t);
-    const char *event;
-    size_t event_len;
+    zend_string *event;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "s", &event, &event_len)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &event)) {
         return;
     }
 
-    listeners = rp_event_emitter_getListeners(&resource->event_hook, event, event_len);
+    listeners = rp_event_emitter_getListeners(&resource->event_hook, event->val, event->len);
 
     if(listeners == NULL){
         RETURN_NULL();
