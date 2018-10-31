@@ -1,7 +1,6 @@
 #ifndef _RP_SERVER_SECURE_H
 #define _RP_SERVER_SECURE_H
 #ifdef HAVE_OPENSSL
-#include "ssl_detect.h"
 #include "internal/event_emitter.h"
 
 CLASS_ENTRY_FUNCTION_D(respond_server_secure);

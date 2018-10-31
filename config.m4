@@ -35,6 +35,51 @@ AC_DEFUN([AC_RESPOND_HAVE_REUSEPORT],
     ])
 ])
 
+AC_DEFUN([AC_RESPOND_HAVE_TLS_METHOD],
+[
+    PHP_CHECK_LIBRARY(ssl, TLS_method, [
+        AC_DEFINE(HAVE_OPENSSL_TLS_METHOD, 1, [Have openssl tls method?])
+    ], [
+    ], [
+    ])
+])
+
+AC_DEFUN([AC_RESPOND_HAVE_TLSV1_METHOD],
+[
+    PHP_CHECK_LIBRARY(ssl, TLSv1_method, [
+        AC_DEFINE(HAVE_OPENSSL_TLSV1_METHOD, 1, [Have openssl tls v1 method?])
+    ], [
+    ], [
+    ])
+])
+
+AC_DEFUN([AC_RESPOND_HAVE_TLSV1_1_METHOD],
+[
+    PHP_CHECK_LIBRARY(ssl, TLSv1_1_method, [
+        AC_DEFINE(HAVE_OPENSSL_TLSV1_1_METHOD, 1, [Have openssl tls v1_1 method?])
+    ], [
+    ], [
+    ])
+])
+
+AC_DEFUN([AC_RESPOND_HAVE_TLSV1_2_METHOD],
+[
+    PHP_CHECK_LIBRARY(ssl, TLSv1_2_method, [
+        AC_DEFINE(HAVE_OPENSSL_TLSV1_2_METHOD, 1, [Have openssl tls v1_2 method?])
+    ], [
+    ], [
+    ])
+])
+
+AC_DEFUN([AC_RESPOND_HAVE_TLS_ALPN],
+[
+    PHP_CHECK_LIBRARY(ssl, SSL_CTX_set_alpn_protos, [
+        AC_DEFINE(HAVE_OPENSSL_TLS_ALPN, 1, [Have openssl tls alpn?])
+    ], [
+    ], [
+    ])
+])
+
 PHP_ARG_WITH(respondphp, for respondphp support,
 dnl Make sure that the comment is aligned:
 [  --with-respondphp       Include respondphp support])
@@ -118,7 +163,8 @@ if test "$PHP_RESPONDPHP" != "no"; then
   PHP_PATH=`$PHP_CONFIG --php-binary`
   if test "x$PHP_PATH" == "x" || test ! -x "$PHP_PATH"; then
     AC_MSG_ERROR([php-binary not found. Please install PHP CLI])
-  fi  
+  fi
+
   PHP_PATH=$PHP_PATH make -f Makefile.predefined clean all
   
   dnl {{{ --with-uv
@@ -205,6 +251,11 @@ if test "$PHP_RESPONDPHP" != "no"; then
       PHP_ADD_LIBRARY(crypto, 1, RESPONDPHP_SHARED_LIBADD)
       AC_MSG_RESULT(libuv include success)
     fi
+    AC_RESPOND_HAVE_TLS_ALPN
+    AC_RESPOND_HAVE_TLS_METHOD
+    AC_RESPOND_HAVE_TLSV1_METHOD
+    AC_RESPOND_HAVE_TLSV1_1_METHOD
+    AC_RESPOND_HAVE_TLSV1_2_METHOD
   fi
   dnl }}}
 

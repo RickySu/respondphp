@@ -203,7 +203,6 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
     SSL_CTX *ctx = NULL;
     for(zend_hash_internal_pointer_reset(array_ht); current = zend_hash_get_current_data(array_ht); zend_hash_move_forward(array_ht)) {
         ctx = SSL_CTX_new(SECURE_SERVER_METHOD());
-
         if(!(
             ssl_ctx_set_pkey(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_pk")), zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("passphrase"))) &&
             ssl_ctx_set_cert(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_cert")))
@@ -226,7 +225,7 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
         resource->ctx = ctx;
     }
 
-#ifdef HAVE_TLS_SNI
+#ifdef HAVE_OPENSSL_TLS_SNI
     if(resource->ctx){
         fprintf(stderr, "sni init\n");
         SSL_CTX_set_tlsext_servername_callback(resource->ctx, ssl_sni_cb);

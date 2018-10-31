@@ -42,9 +42,10 @@ static zend_bool connection_shutdown(rp_connection_secure_ext_t *resource)
     if(!resource->connection->connection_methods.shutdown(resource->connection)){
         return 0;
     }
-
+    fprintf(stderr, "sec shutdown return\n");
     return 1;
 }
+
 static zend_bool connection_write(rp_connection_secure_ext_t *resource, void *data, size_t data_len)
 {
     if(SSL_write(resource->ssl, data, data_len) > 0) {
@@ -317,14 +318,13 @@ PHP_METHOD(respond_connection_secure, end)
     if(data && !resource->connection_methods.write(resource, data->val, data->len)) {
         RETURN_FALSE;
     }
-
-    if(!resource->connection_methods.shutdown(resource->connection)){
+fprintf(stderr, "start run shutdown %p %p\n", resource->connection_methods.shutdown, connection_shutdown);
+    if(!resource->connection_methods.shutdown(resource)){
         RETURN_FALSE;
     }
 
     RETURN_TRUE;
 }
-
 
 PHP_METHOD(respond_connection_secure, getRemoteAddress)
 {

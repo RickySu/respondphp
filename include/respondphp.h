@@ -1,7 +1,9 @@
 #ifndef _RP_RESPONDPHP_H
 #define _RP_RESPONDPHP_H
 
-#include "config.h"
+//#ifdef HAVE_CONFIG_H
+    #include "config.h"
+//#endif
 
 #ifdef HAVE_DEBUG
     #define RP_ASSERT(exp) ZEND_ASSERT(exp)
@@ -25,6 +27,7 @@
 #ifdef HAVE_OPENSSL
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
+#include "ssl_detect.h"
 #endif
 
 #include <sys/prctl.h>
