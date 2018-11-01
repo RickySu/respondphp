@@ -71,6 +71,15 @@ AC_DEFUN([AC_RESPOND_HAVE_TLSV1_2_METHOD],
     ])
 ])
 
+AC_DEFUN([AC_RESPOND_HAVE_TLSV1_3_METHOD],
+[
+    PHP_CHECK_LIBRARY(ssl, TLSv1_3_method, [
+        AC_DEFINE(HAVE_OPENSSL_TLSV1_3_METHOD, 1, [Have openssl tls v1_3 method?])
+    ], [
+    ], [
+    ])
+])
+
 AC_DEFUN([AC_RESPOND_HAVE_TLS_ALPN],
 [
     PHP_CHECK_LIBRARY(ssl, SSL_CTX_set_alpn_protos, [
@@ -256,6 +265,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     AC_RESPOND_HAVE_TLSV1_METHOD
     AC_RESPOND_HAVE_TLSV1_1_METHOD
     AC_RESPOND_HAVE_TLSV1_2_METHOD
+    AC_RESPOND_HAVE_TLSV1_3_METHOD
   fi
   dnl }}}
 
