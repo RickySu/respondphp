@@ -73,6 +73,7 @@ DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
 #ifdef HAVE_OPENSSL
 DECLARE_CLASS_ENTRY(respond_server_secure);
 DECLARE_CLASS_ENTRY(respond_connection_secure);
+DECLARE_CLASS_ENTRY(respond_connector_secure);
 #endif
 
 void rp_init_routine_manager(int *routine_fd);
