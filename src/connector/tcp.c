@@ -71,7 +71,8 @@ PHP_METHOD(respond_connector_tcp, connect)
 
     uv_tcp = rp_malloc(sizeof(uv_tcp_t));
     uv_tcp_init(&main_loop, uv_tcp);
-    connector = rp_socket_connect(uv_tcp, self, &addr);
+    connector = rp_malloc(sizeof(rp_connector_t));
+    rp_socket_connect(connector, uv_tcp, self, &addr);
     fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
     RETVAL_ZVAL(&connector->promise, 1, 0);
 }

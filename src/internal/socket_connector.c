@@ -3,25 +3,26 @@
 
 static void connection_cb(rp_connector_t *connector, int status);
 
-rp_connector_t *rp_socket_connect(uv_handle_t *handle, zval *self, rp_reactor_addr_t *addr)
+void rp_socket_connect_ex(rp_connector_t *connector, uv_handle_t *handle, zval *self, rp_reactor_addr_t *addr, uv_connect_cb callback)
 {
-    rp_connector_t *connector;
-    connector = rp_malloc(sizeof(rp_connector_t));
     rp_make_promise_object(&connector->promise);
     connector->zo = Z_OBJ_P(self);
     Z_ADDREF_P(self);
 
+    if(callback == NULL){
+        callback = (uv_connect_cb) connection_cb;
+    }
+
     switch (handle->type){
         case UV_TCP:
-            uv_tcp_connect(connector, handle, addr, (uv_connect_cb) connection_cb);
+            uv_tcp_connect(connector, handle, addr, callback);
             break;
         case UV_NAMED_PIPE:
-            uv_pipe_connect(connector, handle, addr, (uv_connect_cb) connection_cb);
+            uv_pipe_connect(connector, handle, addr, callback);
             break;
         default:
             break;
     }
-    return connector;
 }
 
 static void connection_cb(rp_connector_t *connector, int status)

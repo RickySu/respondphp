@@ -61,7 +61,8 @@ PHP_METHOD(respond_connector_pipe, connect)
     addr.socket_path = socket_path->val;
     uv_pipe = rp_malloc(sizeof(uv_pipe_t));
     uv_pipe_init(&main_loop, uv_pipe, 0);
-    connector = rp_socket_connect(uv_pipe, self, &addr);
+    connector = rp_malloc(sizeof(rp_connector_t));
+    rp_socket_connect(connector, uv_pipe, self, &addr);
     fprintf(stderr, "connect: %p %p\n", connector, uv_pipe);
     RETVAL_ZVAL(&connector->promise, 1, 0);
 }

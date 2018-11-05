@@ -58,8 +58,16 @@ static zend_bool connection_write(rp_connection_secure_ext_t *resource, void *da
 
 static void releaseResource(rp_connection_secure_ext_t *resource)
 {
-    BIO_free(resource->read_bio);
-    BIO_free(resource->write_bio);
+    fprintf(stderr, "ssl %p\n", resource->ssl);
+    SSL_free(resource->ssl);
+    fprintf(stderr, "ssl free\n");
+
+    if(resource->ctx) {
+        fprintf(stderr, "ctx free\n");
+        SSL_CTX_free(resource->ctx);
+    }
+
+    fprintf(stderr, "all free\n");
     zend_object_ptr_dtor(&resource->connection->zo);
     rp_event_hook_destroy(&resource->event_hook);
     zend_object_ptr_dtor(&resource->zo);
@@ -136,6 +144,7 @@ void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *c
     secure_resource->connection_methods.shutdown = connection_shutdown;
     secure_resource->connection_methods.close = connection_close;
     secure_resource->connection = connection_resource;
+    fprintf(stderr, "ssl: %p\n", ssl);
     secure_resource->ssl = ssl;
     secure_resource->read_bio = BIO_new(BIO_s_mem());
     secure_resource->write_bio = BIO_new(BIO_s_mem());

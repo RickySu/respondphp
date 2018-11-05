@@ -11,6 +11,7 @@ CLASS_ENTRY_FUNCTION_D(respond_connection_secure);
 typedef struct {
     rp_connection_methods_t connection_methods;
     uint flag;
+    SSL_CTX *ctx;
     SSL *ssl;
     BIO *read_bio;
     BIO *write_bio;

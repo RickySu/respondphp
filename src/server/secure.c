@@ -202,7 +202,7 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
     zval *current, *hostname;
     SSL_CTX *ctx = NULL;
     for(zend_hash_internal_pointer_reset(array_ht); current = zend_hash_get_current_data(array_ht); zend_hash_move_forward(array_ht)) {
-        ctx = SSL_CTX_new(SECURE_SERVER_METHOD());
+        ctx = SSL_CTX_new(SECURE_METHOD());
         if(!(
             ssl_ctx_set_pkey(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_pk")), zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("passphrase"))) &&
             ssl_ctx_set_cert(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_cert")))
