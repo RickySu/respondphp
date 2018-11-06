@@ -69,6 +69,7 @@ DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_connection_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
+DECLARE_CLASS_ENTRY(respond_network_resolver);
 
 #ifdef HAVE_OPENSSL
 DECLARE_CLASS_ENTRY(respond_server_secure);

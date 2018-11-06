@@ -51,6 +51,7 @@ PHP_MINIT_FUNCTION(respondphp)
     CLASS_ENTRY_FUNCTION_C(respond_server_pipe);
     CLASS_ENTRY_FUNCTION_C(respond_server_routine);
     CLASS_ENTRY_FUNCTION_C(respond_stream_connection);
+    CLASS_ENTRY_FUNCTION_C(respond_network_resolver);
 #ifdef HAVE_OPENSSL
     CLASS_ENTRY_FUNCTION_C(respond_connector_secure);
     CLASS_ENTRY_FUNCTION_C(respond_server_secure);
