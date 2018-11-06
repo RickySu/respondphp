@@ -1,7 +1,7 @@
 #include "respondphp.h"
-#include "internal/socket_connection.h"
+#include "internal/stream_connection.h"
 
-void rp_socket_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address)
+void rp_stream_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address)
 {
     struct sockaddr addr;
     int addrlen = INET6_ADDRSTRLEN + 6;
@@ -18,7 +18,7 @@ void rp_socket_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address)
     ZVAL_STRING(address, addr_str);
 }
 
-void rp_socket_connection_tcp_getLocalAddress(uv_tcp_t *handle, zval *address)
+void rp_stream_connection_tcp_getLocalAddress(uv_tcp_t *handle, zval *address)
 {
     struct sockaddr addr;
     int addrlen = INET6_ADDRSTRLEN + 6;

@@ -15,7 +15,7 @@ typedef struct {
 typedef struct {
     rp_connector_t connector;
     zend_string *server_name;
-    rp_connection_secure_ext_t *connection_secure_resource;
+    rp_stream_secure_ext_t *connection_secure_resource;
 } rp_secure_connector_t;
 
 PHP_METHOD(respond_connector_secure, connect);

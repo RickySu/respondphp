@@ -2,7 +2,7 @@
 
 #ifdef HAVE_OPENSSL
 #include "internal/socket_connector.h"
-#include "connection/secure.h"
+#include "stream/secure.h"
 #include "connector/secure.h"
 
 DECLARE_FUNCTION_ENTRY(respond_connector_secure) =
@@ -16,7 +16,7 @@ static void free_respond_connector_secure_resource(zend_object *object);
 static void releaseResource(rp_connector_secure_ext_t *resource);
 static void connection_cb(rp_secure_connector_t *connector, int status);
 static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx);
-static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource);
+static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *connection_secure_resource);
 static zend_bool matches_wildcard_name(const char *subjectname, const char *certname);
 static zend_bool matches_san_list(X509 *peer, const char *subject_name);
 static zend_bool matches_common_name(X509 *peer, const char *subject_name);
@@ -117,7 +117,7 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
     }
 }
 
-static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
+static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *connection_secure_resource)
 {
     int ret, err;
     zval connection_secure, exception, err_message;
@@ -174,7 +174,7 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
 static void connection_cb(rp_secure_connector_t *connector, int status)
 {
     zval connection_secure, exception, param;
-    rp_connection_secure_ext_t *connection_secure_resource;
+    rp_stream_secure_ext_t *connection_secure_resource;
     SSL_CTX *ctx;
 
     fprintf(stderr, "client connected: %d\n", status);
@@ -196,9 +196,9 @@ static void connection_cb(rp_secure_connector_t *connector, int status)
     SSL_CTX_set_default_verify_paths(ctx);
     SSL_CTX_set_cipher_list(ctx, "DEFAULT");
 
-    rp_connection_connection_factory(connector->connector.connect_req.handle, &param);
-    rp_connection_secure_factory(SSL_new(ctx), &param, &connection_secure);
-    connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_connection_secure_ext_t);
+    rp_stream_connection_factory(connector->connector.connect_req.handle, &param);
+    rp_stream_secure_factory(SSL_new(ctx), &param, &connection_secure);
+    connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_stream_secure_ext_t);
     connection_secure_resource->creater_resource = connector;
     connection_secure_resource->handshake = handshake_read_cb;
     connection_secure_resource->ctx = ctx;

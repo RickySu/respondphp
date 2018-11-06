@@ -1,8 +1,8 @@
 #include "respondphp.h"
 #ifdef HAVE_OPENSSL
 #include "server/secure.h"
-#include "connection/connection.h"
-#include "connection/secure.h"
+#include "stream/connection.h"
+#include "stream/secure.h"
 
 DECLARE_FUNCTION_ENTRY(respond_server_secure) =
 {
@@ -270,7 +270,7 @@ PHP_METHOD(respond_server_secure, __construct)
     ssl_set_ciphers(zend_hash_str_find(Z_ARRVAL_P(options), ZEND_STRL("ciphers")), resource);
 }
 
-static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
+static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *connection_secure_resource)
 {
     int ret, err;
     zval connection_secure;
@@ -303,12 +303,12 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
 
 static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *server_resource)
 {
-    rp_connection_connection_ext_t *connection_connection_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_connection_connection_ext_t);
-    rp_connection_secure_ext_t *connection_secure_resource;
+    rp_stream_connection_ext_t *connection_connection_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_stream_connection_ext_t);
+    rp_stream_secure_ext_t *connection_secure_resource;
     zval connection_secure;
     fprintf(stderr, "connect %d %p\n", n_param, server_resource);
-    rp_connection_secure_factory(SSL_new(server_resource->ctx), &param[0], &connection_secure);
-    connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_connection_secure_ext_t);
+    rp_stream_secure_factory(SSL_new(server_resource->ctx), &param[0], &connection_secure);
+    connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_stream_secure_ext_t);
     connection_secure_resource->creater_resource = server_resource;
     connection_secure_resource->handshake = handshake_read_cb;
     SSL_set_accept_state(connection_secure_resource->ssl);

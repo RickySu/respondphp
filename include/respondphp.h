@@ -62,7 +62,7 @@ DECLARE_CLASS_ENTRY(respond_server_tcp);
 DECLARE_CLASS_ENTRY(respond_server_udp);
 DECLARE_CLASS_ENTRY(respond_server_pipe);
 DECLARE_CLASS_ENTRY(respond_server_routine);
-DECLARE_CLASS_ENTRY(respond_connection_connection);
+DECLARE_CLASS_ENTRY(respond_stream_connection);
 DECLARE_CLASS_ENTRY(respond_event_event_emitter_interface);
 DECLARE_CLASS_ENTRY(respond_stream_server_interface);
 DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
@@ -72,7 +72,7 @@ DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
 
 #ifdef HAVE_OPENSSL
 DECLARE_CLASS_ENTRY(respond_server_secure);
-DECLARE_CLASS_ENTRY(respond_connection_secure);
+DECLARE_CLASS_ENTRY(respond_stream_secure);
 DECLARE_CLASS_ENTRY(respond_connector_secure);
 #endif
 
@@ -88,13 +88,13 @@ int rp_reactors_count();
 int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data, size_t data_len);
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc);
 #define rp_reactor_ipc_send(reactor, client, close_cb) rp_reactor_ipc_send_ex(reactor, client, close_cb, NULL, 0, (uv_stream_t *) &ipc_pipe)
-void rp_connection_connection_factory(rp_stream_t *client, zval *connection);
+void rp_stream_connection_factory(rp_stream_t *client, zval *connection);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_close_cb_release(uv_handle_t* handle);
 
 #ifdef HAVE_OPENSSL
-void rp_connection_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);
+void rp_stream_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);
 #endif
 
 static zend_always_inline void rp_reject_promise(zval *promise, zval *result)

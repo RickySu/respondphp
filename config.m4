@@ -140,10 +140,10 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/connector/tcp.c
     src/connector/pipe.c
     src/connector/secure.c
-    src/connection/connection.c
-    src/connection/secure.c
+    src/stream/connection.c
+    src/stream/secure.c
     src/internal/event_emitter.c
-    src/internal/socket_connection.c
+    src/internal/stream_connection.c
     src/internal/socket_connector.c
     src/interface/event_event_emitter_interface.c
     src/interface/stream_server_interface.c
