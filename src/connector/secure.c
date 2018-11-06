@@ -20,6 +20,7 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
 static zend_bool matches_wildcard_name(const char *subjectname, const char *certname);
 static zend_bool matches_san_list(X509 *peer, const char *subject_name);
 static zend_bool matches_common_name(X509 *peer, const char *subject_name);
+static void releaseConnector(rp_secure_connector_t *connector);
 
 CLASS_ENTRY_FUNCTION_D(respond_connector_secure)
 {
@@ -30,6 +31,14 @@ CLASS_ENTRY_FUNCTION_D(respond_connector_secure)
     zend_class_implements(CLASS_ENTRY(respond_connector_secure), 1, CLASS_ENTRY(respond_socket_connector_interface));
 }
 
+static void releaseConnector(rp_secure_connector_t *connector)
+{
+    zend_object_ptr_dtor(connector->connector.zo);
+    ZVAL_PTR_DTOR(&connector->connector.promise);
+    zend_string_release(connector->server_name);
+    rp_free(connector);
+}
+
 static void releaseResource(rp_connector_secure_ext_t *resource)
 {
 }
@@ -38,6 +47,7 @@ static zend_object *create_respond_connector_secure_resource(zend_class_entry *c
 {
     rp_connector_secure_ext_t *resource;
     resource = ALLOC_RESOURCE(rp_connector_secure_ext_t, ce);
+    fprintf(stderr, "resource: %p\n", resource);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);    
     resource->zo.handlers = &OBJECT_HANDLER(respond_connector_secure);
@@ -110,7 +120,7 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext_t *connection_secure_resource)
 {
     int ret, err;
-    zval connection_secure;
+    zval connection_secure, exception, err_message;
     X509 *peer_cert;
     rp_secure_connector_t *connector;
 //    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
@@ -123,13 +133,25 @@ static void handshake_read_cb(int n_param, zval *param, rp_connection_secure_ext
             connector = SSL_get_ex_data(connection_secure_resource->ssl, 0);
             if(!matches_common_name(peer_cert, connector->server_name->val) && !matches_san_list(peer_cert, connector->server_name->val)) {
                 fprintf(stderr, "server name miss match\n");
-            }
-            else{
-                fprintf(stderr, "server name matched\n");
+                connection_secure_resource->connection_methods.close(connection_secure_resource);
 
+                ZVAL_STRING(&err_message, "cert not match");
+                object_init_ex(&exception, zend_ce_exception);
+                zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &err_message);
+                rp_reject_promise(&connector->connector.promise, &exception);
+                ZVAL_PTR_DTOR(&exception);
+                ZVAL_PTR_DTOR(&err_message);
+
+                releaseConnector(connector);
+                X509_free(peer_cert);
+                return;
             }
-            zend_string_release(connector->server_name);
-            rp_free(connector);
+            fprintf(stderr, "server name matched\n");
+            ZVAL_OBJ(&connection_secure, &connection_secure_resource->zo);
+            zval_add_ref(&connection_secure);
+            rp_resolve_promise(&connector->connector.promise, &connection_secure);
+            ZVAL_PTR_DTOR(&connection_secure);
+            releaseConnector(connector);
             X509_free(peer_cert);
         }
     }

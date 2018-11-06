@@ -31,7 +31,7 @@ static zend_bool connection_close(rp_connection_secure_ext_t *resource);
 
 static zend_bool connection_close(rp_connection_secure_ext_t *resource)
 {
-    if(!(resource->connection->connection_methods.close(resource))){
+    if(!(resource->connection->connection_methods.close(resource->connection))){
         return 0;
     }
     return 1;
