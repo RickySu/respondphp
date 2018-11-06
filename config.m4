@@ -149,7 +149,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/interface/stream_server_interface.c
     src/interface/stream_writable_stream_interface.c
     src/interface/stream_readable_stream_interface.c
-    src/interface/socket_connection_interface.c
+    src/interface/stream_connection_interface.c
     src/interface/socket_connector_interface.c
   "
 

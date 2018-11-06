@@ -180,7 +180,7 @@ CLASS_ENTRY_FUNCTION_D(respond_connection_secure)
     OBJECT_HANDLER(respond_connection_secure).offset = XtOffsetOf(rp_connection_secure_ext_t, zo);
     OBJECT_HANDLER(respond_connection_secure).clone_obj = NULL;
     OBJECT_HANDLER(respond_connection_secure).free_obj = free_respond_connection_secure_resource;
-    zend_class_implements(CLASS_ENTRY(respond_connection_secure), 1, CLASS_ENTRY(respond_socket_connection_interface));
+    zend_class_implements(CLASS_ENTRY(respond_connection_secure), 1, CLASS_ENTRY(respond_stream_connection_interface));
 }
 
 PHP_METHOD(respond_connection_secure, __construct)
