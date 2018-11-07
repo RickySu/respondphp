@@ -17,11 +17,14 @@ typedef struct {
 } rp_network_resolver_ext_t;
 
 typedef struct {
-    uv_getaddrinfo_t addrinfo;
+    union _info_u{
+        uv_getaddrinfo_t addrinfo;
+        uv_getnameinfo_t nameinfo;
+    } info;
     struct addrinfo hints;
     zval promise;
     zend_object *zo;
-} rp_getaddrinto_ext_t;
+} rp_resolver_into_t;
 
 PHP_METHOD(respond_network_resolver, getaddrinfo);
 PHP_METHOD(respond_network_resolver, getnameinfo);

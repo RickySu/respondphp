@@ -3,8 +3,9 @@
 
 static zend_object *create_respond_network_resolver_resource(zend_class_entry *ce);
 static void free_respond_network_resolver_resource(zend_object *object);
-static void on_addrinfo_resolved(rp_getaddrinto_ext_t *info, int status, struct addrinfo *res);
-static void reject_result(rp_getaddrinto_ext_t *info, int err);
+static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct addrinfo *res);
+static void reject_result(rp_resolver_into_t *info, int err);
+static void on_nameinfo_resolved(rp_resolver_into_t *info, int status, const char *hostname, const char *service);
 
 DECLARE_FUNCTION_ENTRY(respond_network_resolver) =
 {
@@ -38,10 +39,25 @@ static void free_respond_network_resolver_resource(zend_object *object)
     zend_object_std_dtor(object);
 }
 
-static void on_addrinfo_resolved(rp_getaddrinto_ext_t *info, int status, struct addrinfo *res)
+static void on_nameinfo_resolved(rp_resolver_into_t *info, int status, const char *hostname, const char *service)
 {
-    int addrlen = INET6_ADDRSTRLEN + 6;
-    char addr_str[INET6_ADDRSTRLEN + 6];
+    zval result;
+    if(status >= 0) {
+        ZVAL_STRING(&result, hostname);
+        rp_resolve_promise(&info->promise, &result);
+        ZVAL_PTR_DTOR(&info->promise);
+        ZVAL_PTR_DTOR(&result);
+    }
+    else{
+        reject_result(info, status);
+    }
+    zend_object_ptr_dtor(info->zo);
+    rp_free(info);
+}
+
+static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct addrinfo *res)
+{
+    char addr_str[INET6_ADDRSTRLEN + 1];
     zval result, v4result, v6result;
 
     if(status != 0){
@@ -57,11 +73,11 @@ static void on_addrinfo_resolved(rp_getaddrinto_ext_t *info, int status, struct 
     while(res) {
         switch (res->ai_family) {
             case AF_INET:
-                uv_ip4_name((struct sockaddr_in *) res->ai_addr, addr_str, addrlen);
+                uv_ip4_name((struct sockaddr_in *) res->ai_addr, addr_str, sizeof(addr_str));
                 add_next_index_string(&v4result, addr_str);
                 break;
             case AF_INET6:
-                uv_ip6_name((struct sockaddr_in *) res->ai_addr, addr_str, addrlen);
+                uv_ip6_name((struct sockaddr_in *) res->ai_addr, addr_str, sizeof(addr_str));
                 add_next_index_string(&v6result, addr_str);
                 break;
         }
@@ -76,6 +92,7 @@ static void on_addrinfo_resolved(rp_getaddrinto_ext_t *info, int status, struct 
     ZVAL_PTR_DTOR(&result);
     zend_object_ptr_dtor(info->zo);
     rp_free(info);
+    uv_freeaddrinfo(res);
 }
 
 PHP_METHOD(respond_network_resolver, getaddrinfo)
@@ -84,13 +101,13 @@ PHP_METHOD(respond_network_resolver, getaddrinfo)
     zval *self = getThis();
     rp_network_resolver_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_network_resolver_ext_t);
     zend_string *hostname;
-    rp_getaddrinto_ext_t *info;
+    rp_resolver_into_t *info;
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &hostname)) {
         return;
     }
 
-    info = rp_calloc(1, sizeof(rp_getaddrinto_ext_t));
+    info = rp_calloc(1, sizeof(rp_resolver_into_t));
     rp_make_promise_object(&info->promise);
 
     info->hints.ai_family = PF_UNSPEC;
@@ -110,14 +127,54 @@ PHP_METHOD(respond_network_resolver, getaddrinfo)
 
 PHP_METHOD(respond_network_resolver, getnameinfo)
 {
+    int err = 0;
+    zval *self = getThis();
+    rp_network_resolver_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_network_resolver_ext_t);
+    zend_string *ip_address;
+    rp_reactor_addr_t addr;
+    rp_resolver_into_t *info;
 
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &ip_address)) {
+        return;
+    }
+
+    info = rp_calloc(1, sizeof(rp_resolver_into_t));
+    rp_make_promise_object(&info->promise);
+    RETVAL_ZVAL(&info->promise, 1, 0);
+
+    if(memchr(ip_address->val, ':', ip_address->len) == NULL) {
+        err = uv_ip4_addr(ip_address->val, 0, &addr.sockaddr);
+    }
+    else {
+        err = uv_ip6_addr(ip_address->val, 0, &addr.sockaddr6);
+    }
+
+    if(err != 0){
+        goto error_getnameinfo;
+    }
+
+    err = uv_getnameinfo(&main_loop, (uv_getnameinfo_t *) info, (uv_getnameinfo_cb) on_nameinfo_resolved, (const struct sockaddr *) &addr, 0);
+
+    if(err != 0){
+        goto error_getnameinfo;
+    }
+
+    Z_ADDREF_P(self);
+    info->zo = &resource->zo;
+    return;
+
+    error_getnameinfo:
+        reject_result(info, err);
+        rp_free(info);
 }
 
-static void reject_result(rp_getaddrinto_ext_t *info, int err)
+static void reject_result(rp_resolver_into_t *info, int err)
 {
-    zval exception;
-    ZVAL_LONG(&exception, err);
+    zval exception, reason;
+    ZVAL_LONG(&reason, err);
     object_init_ex(&exception, zend_ce_exception);
-    zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &exception);
+    zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &reason);
     rp_reject_promise(&info->promise, &exception);
+    ZVAL_PTR_DTOR(&exception);
+    ZVAL_PTR_DTOR(&info->promise);
 }
