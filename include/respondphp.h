@@ -157,6 +157,16 @@ static zend_always_inline void rp_make_promise_object(zval *promise)
     object_init_ex(promise, rp_promise_ce);
 }
 
+zend_always_inline static void rp_reject_promise_long(zval *promise, int err)
+{
+    zval exception, reason;
+    ZVAL_LONG(&reason, err);
+    object_init_ex(&exception, zend_ce_exception);
+    zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &reason);
+    rp_reject_promise(promise, &exception);
+    ZVAL_PTR_DTOR(&exception);
+}
+
 #ifdef HAVE_PR_SET_PDEATHSIG
 #define DETTACH_SESSION setsid
 extern  uv_signal_t signal_handle;

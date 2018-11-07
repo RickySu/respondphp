@@ -4,7 +4,6 @@
 static zend_object *create_respond_network_resolver_resource(zend_class_entry *ce);
 static void free_respond_network_resolver_resource(zend_object *object);
 static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct addrinfo *res);
-static void reject_result(rp_resolver_into_t *info, int err);
 static void on_nameinfo_resolved(rp_resolver_into_t *info, int status, const char *hostname, const char *service);
 static void getaddrinfo_async_cb(rp_resolver_into_t *info);
 static void getnameinfo_async_cb(rp_resolver_into_t *info);
@@ -51,7 +50,7 @@ static void on_nameinfo_resolved(rp_resolver_into_t *info, int status, const cha
         ZVAL_PTR_DTOR(&result);
     }
     else{
-        reject_result(info, status);
+        rp_reject_promise_long(&info->promise, status);
     }
     zend_object_ptr_dtor(info->zo);
     rp_free(info);
@@ -63,7 +62,7 @@ static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct ad
     zval result, v4result, v6result;
 
     if(status != 0){
-        reject_result(info, status);
+        rp_reject_promise_long(&info->promise, status);
         rp_free(info);
         return;
     }
@@ -101,7 +100,7 @@ static void getaddrinfo_async_cb(rp_resolver_into_t *info)
 {
     int err;
     if((err = uv_getaddrinfo(&main_loop, (uv_getaddrinfo_t *) info, (uv_getaddrinfo_cb) on_addrinfo_resolved, info->info.addr.hostname->val, NULL, &info->info.addr.hints)) != 0) {
-        reject_result(info, err);
+        rp_reject_promise_long(&info->promise, err);
         zend_object_ptr_dtor(info->zo);
         rp_free(info);
     }
@@ -137,7 +136,7 @@ static void getnameinfo_async_cb(rp_resolver_into_t *info)
 {
     int err;
     if(err = uv_getnameinfo(&main_loop, (uv_getnameinfo_t *) info, (uv_getnameinfo_cb) on_nameinfo_resolved, (const struct sockaddr *) &info->info.name.addr, 0)){
-        reject_result(info, err);
+        rp_reject_promise_long(&info->promise, err);
         zend_object_ptr_dtor(info->zo);
         rp_free(info);
     }
@@ -169,22 +168,11 @@ PHP_METHOD(respond_network_resolver, getnameinfo)
     }
 
     if(err != 0){
-        reject_result(info, err);
+        rp_reject_promise_long(&info->promise, err);
         zend_object_ptr_dtor(info->zo);
         rp_free(info);
         return;
     }
 
     rp_reactor_async_init((rp_reactor_async_init_cb) getnameinfo_async_cb, info);
-}
-
-static void reject_result(rp_resolver_into_t *info, int err)
-{
-    zval exception, reason;
-    ZVAL_LONG(&reason, err);
-    object_init_ex(&exception, zend_ce_exception);
-    zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &reason);
-    rp_reject_promise(&info->promise, &exception);
-    ZVAL_PTR_DTOR(&exception);
-    ZVAL_PTR_DTOR(&info->promise);
 }

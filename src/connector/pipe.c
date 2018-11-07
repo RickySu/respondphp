@@ -11,7 +11,7 @@ DECLARE_FUNCTION_ENTRY(respond_connector_pipe) =
 static zend_object *create_respond_connector_pipe_resource(zend_class_entry *class_type);
 static void free_respond_connector_pipe_resource(zend_object *object);
 static void releaseResource(rp_connector_pipe_ext_t *resource);
-static void client_connection_cb(rp_connector_t* connector, int status);
+static void connect_async_cb(rp_connector_t *connector);
 
 CLASS_ENTRY_FUNCTION_D(respond_connector_pipe)
 {
@@ -44,25 +44,31 @@ static void free_respond_connector_pipe_resource(zend_object *object)
     zend_object_std_dtor(object);
 }
 
+static void connect_async_cb(rp_connector_t *connector)
+{
+    uv_pipe_t *uv_pipe;
+    uv_pipe = rp_malloc(sizeof(uv_pipe_t));
+    uv_pipe_init(&main_loop, uv_pipe, 0);
+    rp_socket_connect(connector, uv_pipe, &connector->addr);
+    fprintf(stderr, "connect: %p %p\n", connector, uv_pipe);
+}
+
 PHP_METHOD(respond_connector_pipe, connect)
 {
     zval *self = getThis();
     rp_connector_pipe_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connector_pipe_ext_t);
-    zend_string *socket_path;
-    zend_long ret;
     rp_connector_t *connector;
-    rp_reactor_addr_t addr;
-    uv_pipe_t *uv_pipe;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &socket_path)) {
+    connector = rp_malloc(sizeof(rp_connector_t));
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &connector->addr.socket_path)) {
+        rp_free(connector);
         return;
     }
 
-    addr.socket_path = socket_path->val;
-    uv_pipe = rp_malloc(sizeof(uv_pipe_t));
-    uv_pipe_init(&main_loop, uv_pipe, 0);
-    connector = rp_malloc(sizeof(rp_connector_t));
-    rp_socket_connect(connector, uv_pipe, self, &addr);
-    fprintf(stderr, "connect: %p %p\n", connector, uv_pipe);
+    rp_make_promise_object(&connector->promise);
+    connector->zo = Z_OBJ_P(self);
+    Z_ADDREF_P(self);
     RETVAL_ZVAL(&connector->promise, 1, 0);
+    zend_string_addref(connector->addr.socket_path);
+    rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
 }

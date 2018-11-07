@@ -92,7 +92,12 @@ PHP_METHOD(respond_connector_secure, connect)
     connector = rp_malloc(sizeof(rp_secure_connector_t));
     zend_string_addref(server_name);
     connector->server_name = server_name;
-    rp_socket_connect_ex(connector, uv_tcp, self, &addr, connection_cb);
+
+    rp_make_promise_object(&connector->connector.promise);
+    connector->connector.zo = Z_OBJ_P(self);
+    Z_ADDREF_P(self);
+
+    rp_socket_connect_ex(connector, uv_tcp, &addr, connection_cb);
     fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
     RETVAL_ZVAL(&connector->connector.promise, 1, 0);
 }
