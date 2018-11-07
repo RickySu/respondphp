@@ -49,6 +49,8 @@ extern uv_pipe_t routine_pipe;
 extern zend_class_entry *rp_promise_ce;
 extern zend_module_entry respondphp_module_entry;
 
+#define main_loop_inited() (main_loop.data == &main_loop)
+
 PHP_MINIT_FUNCTION(respondphp);
 PHP_MSHUTDOWN_FUNCTION(respondphp);
 PHP_MINFO_FUNCTION(respondphp);
@@ -92,7 +94,9 @@ int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_
 void rp_stream_connection_factory(rp_stream_t *client, zval *connection);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
-void rp_close_cb_release(uv_handle_t* handle);
+void rp_free_cb(void *data);
+void rp_reactor_async_init(rp_reactor_async_init_cb callback, void *data);
+void rp_reactor_async_init_execute();
 
 #ifdef HAVE_OPENSSL
 void rp_stream_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);

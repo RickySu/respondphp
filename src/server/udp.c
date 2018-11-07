@@ -43,7 +43,7 @@ static void send_cb(rp_reactor_t *reactor, const char *data, size_t data_len, co
     uint16_t port;
     rp_write_req_t *req = rp_make_write_req(data, data_len);
     sock_addr(addr, addr_str, INET6_ADDRSTRLEN, &port);
-    int ret = uv_udp_send(req, &reactor->handler, &req->buf, 1, addr, rp_close_cb_release);
+    int ret = uv_udp_send(req, &reactor->handler, &req->buf, 1, addr, rp_free_cb);
     fprintf(stderr, "req send start (%d) %s %p %.*s %s\n", ret, uv_strerror(ret), req, req->buf.len, req->buf.base, addr_str);
 }
 
@@ -67,7 +67,7 @@ static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, c
         memcpy(&req->payload.recv.addr, addr, sockaddr_size);
         req->payload.recv.data_len = nread;
         memcpy(&req->payload.recv.data, buf->base, nread);
-        int ret = rp_reactor_data_send(reactor, rp_close_cb_release, req, size_of_req_data);
+        int ret = rp_reactor_data_send(reactor, rp_free_cb, req, size_of_req_data);
         fprintf(stderr, "recv data send %p %d %s\n", reactor, ret, uv_strerror(ret));
         rp_free(req);
     }
@@ -177,7 +177,7 @@ PHP_METHOD(respond_server_udp, send)
     memcpy(&req->payload.send.addr, &addr, sizeof(rp_reactor_addr_t));
     req->payload.send.data_len = data->len;
     memcpy(&req->payload.send.data, data->val, data->len);
-    rp_reactor_data_send(resource->reactor, rp_close_cb_release, req, size_of_req_data);
+    rp_reactor_data_send(resource->reactor, rp_free_cb, req, size_of_req_data);
 //        fprintf(stderr, "recv data send %p %d %s\n", reactor, ret, uv_strerror(ret));
     rp_free(req);
 }

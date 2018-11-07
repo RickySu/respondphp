@@ -18,10 +18,16 @@ typedef struct {
 
 typedef struct {
     union _info_u{
-        uv_getaddrinfo_t addrinfo;
-        uv_getnameinfo_t nameinfo;
+        struct _addrinfo_s{
+            uv_getaddrinfo_t addrinfo;
+            struct addrinfo hints;
+            zend_string *hostname;
+        } addr;
+        struct _namerinfo_s {
+            uv_getnameinfo_t nameinfo;
+            rp_reactor_addr_t addr;
+        } name;
     } info;
-    struct addrinfo hints;
     zval promise;
     zend_object *zo;
 } rp_resolver_into_t;

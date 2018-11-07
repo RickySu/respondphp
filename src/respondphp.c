@@ -1,7 +1,7 @@
 #include "respondphp.h"
 #include "version.h"
 
-uv_loop_t main_loop = {.data = UV_UNKNOWN};
+uv_loop_t main_loop = {.data = NULL};
 uv_pipe_t ipc_pipe;
 uv_pipe_t data_pipe;
 uv_pipe_t routine_pipe;
@@ -57,7 +57,7 @@ PHP_MINIT_FUNCTION(respondphp)
     CLASS_ENTRY_FUNCTION_C(respond_server_secure);
     CLASS_ENTRY_FUNCTION_C(respond_stream_secure);
 #endif
-    RP_ASSERT(main_loop.data == UV_UNKNOWN);
+    RP_ASSERT(main_loop.data == NULL);
     return SUCCESS;
 }
 
@@ -101,7 +101,7 @@ void rp_set_task_type(rp_task_type_t type)
     rp_task_type = type;
 }
 
-void rp_close_cb_release(uv_handle_t* handle)
+void rp_free_cb(void *data)
 {
-    rp_free(handle);
+    rp_free(data);
 }

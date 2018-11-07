@@ -49,11 +49,11 @@ static void connection_cb(rp_reactor_t *reactor, int status)
     uv_pipe_init(&main_loop, client, 0);
     
     if (uv_accept((uv_stream_t *) &reactor->handler.pipe, (uv_stream_t*) client) == 0) {
-        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, rp_close_cb_release);
+        rp_reactor_ipc_send(reactor, (uv_stream_t *) client, rp_free_cb);
         return;
     }
     
-    uv_close((uv_handle_t *) client, rp_close_cb_release);
+    uv_close((uv_handle_t *) client, rp_free_cb);
 }
 
 static zend_object *create_respond_server_pipe_resource(zend_class_entry *ce)

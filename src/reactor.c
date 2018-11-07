@@ -6,6 +6,7 @@ uv_signal_t signal_handle;
 #endif
 
 static HashTable rp_reactors;
+static HashTable rp_reactors_async_inits;
 static void write2_cb(reactor_ipc_send_req_t *req, int status);
 static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd);
 static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd);
@@ -16,6 +17,7 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send_req_t *req);
 static void reactor_free(zval *reactor_p);
+static void reactor_async_init_free(zval *data);
 
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
@@ -37,7 +39,7 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
         return client;
     }
 
-    uv_close((uv_handle_t*) client, rp_close_cb_release);
+    uv_close((uv_handle_t*) client, rp_free_cb);
     rp_free(client);
     return NULL;
 }
@@ -151,6 +153,11 @@ static void reactor_free(zval *reactor_p)
     rp_free(reactor);
 }
 
+static void reactor_async_init_free(zval *data)
+{
+    rp_free(Z_PTR_P(data));
+}
+
 static void write2_cb(reactor_ipc_send_req_t *req, int status)
 {
     uv_close((uv_handle_t *) req->client, (uv_close_cb) req->close_cb);
@@ -188,12 +195,14 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
 {
     int ret = 0;
     uv_loop_init(&main_loop);
+    main_loop.data = &main_loop;
     switch(rp_get_task_type()) {
         case ACTOR:
             if(rp_reactors_count() > 0) {
                 rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
                 rp_init_actor_server(worker_ipc_fd, worker_data_fd);
             }
+            rp_reactor_async_init_execute();
             break;
         case WORKER:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
@@ -217,11 +226,13 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
 void rp_reactors_init()
 {
     zend_hash_init(&rp_reactors, 10, NULL, reactor_free, 0);
+    zend_hash_init(&rp_reactors_async_inits, 10, NULL, reactor_async_init_free, 0);
 }
 
 void rp_reactors_destroy()
 {
     zend_hash_destroy(&rp_reactors);
+    zend_hash_destroy(&rp_reactors_async_inits);
 }
 
 rp_reactor_t *rp_reactors_add(zval *server)
@@ -243,7 +254,7 @@ int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data
     send_req->buf.base = (char *) &send_req->reactor_ext;
     send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
     fprintf(stderr, "data send: %.*s\n", data_len, data);
-    return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) rp_close_cb_release);
+    return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) rp_free_cb);
 }
 
 int rp_reactor_ipc_send_ex(rp_reactor_t *reactor, uv_stream_t *client, uv_close_cb close_cb, char *data, size_t data_len, uv_stream_t *ipc)
@@ -263,4 +274,33 @@ static void rp_signal_hup_handler(uv_signal_t* signal, int signum)
 {
     uv_signal_stop(signal);
     uv_stop(&main_loop);
+}
+
+void rp_reactor_async_init(rp_reactor_async_init_cb callback, void *data)
+{
+    async_init_t *async_init;
+
+    if(main_loop_inited()){
+        callback(data);
+        return;
+    }
+
+    async_init = rp_malloc(sizeof(async_init_t));
+    async_init->callback = callback;
+    async_init->data = data;
+    zend_hash_next_index_insert_ptr(&rp_reactors_async_inits, async_init);
+}
+
+void rp_reactor_async_init_execute()
+{
+    zval *current;
+    async_init_t *async_init;
+    for(
+            zend_hash_internal_pointer_reset(&rp_reactors_async_inits);
+            current = zend_hash_get_current_data(&rp_reactors_async_inits);
+            zend_hash_move_forward(&rp_reactors_async_inits)
+            ) {
+        async_init = Z_PTR_P(current);
+        async_init->callback(async_init->data);
+    }
 }

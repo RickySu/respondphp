@@ -84,6 +84,7 @@ PHP_METHOD(respond_event_loop, run)
         fci_call_function(&callback, &retval, 0, NULL);
     }
 
+    RP_ASSERT(main_loop.data == &main_loop);
     uv_run(&main_loop, mode);
 }
 

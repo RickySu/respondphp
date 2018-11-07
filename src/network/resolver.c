@@ -6,6 +6,8 @@ static void free_respond_network_resolver_resource(zend_object *object);
 static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct addrinfo *res);
 static void reject_result(rp_resolver_into_t *info, int err);
 static void on_nameinfo_resolved(rp_resolver_into_t *info, int status, const char *hostname, const char *service);
+static void getaddrinfo_async_cb(rp_resolver_into_t *info);
+static void getnameinfo_async_cb(rp_resolver_into_t *info);
 
 DECLARE_FUNCTION_ENTRY(respond_network_resolver) =
 {
@@ -95,34 +97,50 @@ static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct ad
     uv_freeaddrinfo(res);
 }
 
-PHP_METHOD(respond_network_resolver, getaddrinfo)
+static void getaddrinfo_async_cb(rp_resolver_into_t *info)
 {
     int err;
+    if((err = uv_getaddrinfo(&main_loop, (uv_getaddrinfo_t *) info, (uv_getaddrinfo_cb) on_addrinfo_resolved, info->info.addr.hostname->val, NULL, &info->info.addr.hints)) != 0) {
+        reject_result(info, err);
+        zend_object_ptr_dtor(info->zo);
+        rp_free(info);
+    }
+    zend_string_release(&info->info.addr.hostname);
+}
+
+PHP_METHOD(respond_network_resolver, getaddrinfo)
+{
     zval *self = getThis();
     rp_network_resolver_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_network_resolver_ext_t);
-    zend_string *hostname;
     rp_resolver_into_t *info;
-
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &hostname)) {
-        return;
-    }
 
     info = rp_calloc(1, sizeof(rp_resolver_into_t));
     rp_make_promise_object(&info->promise);
 
-    info->hints.ai_family = PF_UNSPEC;
-    info->hints.ai_socktype = SOCK_DGRAM;
-
-    if((err = uv_getaddrinfo(&main_loop, (uv_getaddrinfo_t *) info, (uv_getaddrinfo_cb) on_addrinfo_resolved, hostname->val, NULL, &info->hints)) != 0) {
-        RETVAL_ZVAL(&info->promise, 1, 0);
-        reject_result(info, err);
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &info->info.addr.hostname)) {
         rp_free(info);
+        ZVAL_PTR_DTOR(&info->promise);
         return;
     }
 
-    Z_ADDREF_P(self);
+    info->info.addr.hints.ai_family = PF_UNSPEC;
+    info->info.addr.hints.ai_socktype = SOCK_DGRAM;
     info->zo = &resource->zo;
+
+    Z_ADDREF_P(self);
     RETVAL_ZVAL(&info->promise, 1, 0);
+    zend_string_addref(&info->info.addr.hostname);
+    rp_reactor_async_init((rp_reactor_async_init_cb) getaddrinfo_async_cb, info);
+}
+
+static void getnameinfo_async_cb(rp_resolver_into_t *info)
+{
+    int err;
+    if(err = uv_getnameinfo(&main_loop, (uv_getnameinfo_t *) info, (uv_getnameinfo_cb) on_nameinfo_resolved, (const struct sockaddr *) &info->info.name.addr, 0)){
+        reject_result(info, err);
+        zend_object_ptr_dtor(info->zo);
+        rp_free(info);
+    }
 }
 
 PHP_METHOD(respond_network_resolver, getnameinfo)
@@ -131,7 +149,6 @@ PHP_METHOD(respond_network_resolver, getnameinfo)
     zval *self = getThis();
     rp_network_resolver_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_network_resolver_ext_t);
     zend_string *ip_address;
-    rp_reactor_addr_t addr;
     rp_resolver_into_t *info;
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "S", &ip_address)) {
@@ -141,31 +158,24 @@ PHP_METHOD(respond_network_resolver, getnameinfo)
     info = rp_calloc(1, sizeof(rp_resolver_into_t));
     rp_make_promise_object(&info->promise);
     RETVAL_ZVAL(&info->promise, 1, 0);
-
-    if(memchr(ip_address->val, ':', ip_address->len) == NULL) {
-        err = uv_ip4_addr(ip_address->val, 0, &addr.sockaddr);
-    }
-    else {
-        err = uv_ip6_addr(ip_address->val, 0, &addr.sockaddr6);
-    }
-
-    if(err != 0){
-        goto error_getnameinfo;
-    }
-
-    err = uv_getnameinfo(&main_loop, (uv_getnameinfo_t *) info, (uv_getnameinfo_cb) on_nameinfo_resolved, (const struct sockaddr *) &addr, 0);
-
-    if(err != 0){
-        goto error_getnameinfo;
-    }
-
     Z_ADDREF_P(self);
     info->zo = &resource->zo;
-    return;
 
-    error_getnameinfo:
+    if(memchr(ip_address->val, ':', ip_address->len) == NULL) {
+        err = uv_ip4_addr(ip_address->val, 0, &info->info.name.addr.sockaddr);
+    }
+    else {
+        err = uv_ip6_addr(ip_address->val, 0, &info->info.name.addr.sockaddr6);
+    }
+
+    if(err != 0){
         reject_result(info, err);
+        zend_object_ptr_dtor(info->zo);
         rp_free(info);
+        return;
+    }
+
+    rp_reactor_async_init((rp_reactor_async_init_cb) getnameinfo_async_cb, info);
 }
 
 static void reject_result(rp_resolver_into_t *info, int err)

@@ -186,7 +186,7 @@ static void connection_cb(rp_secure_connector_t *connector, int status)
         rp_reject_promise(&connector->connector.promise, &exception);
         ZVAL_PTR_DTOR(&connector->connector.promise);
         zend_object_ptr_dtor(connector->connector.zo);
-        uv_close(connector->connector.connect_req.handle, rp_close_cb_release);
+        uv_close(connector->connector.connect_req.handle, rp_free_cb);
         rp_free(connector);
         return;
     }

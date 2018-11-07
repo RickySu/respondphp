@@ -17,6 +17,7 @@ typedef void (*rp_server_init_cb)(struct rp_reactor_s *reactor);
 typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, const char *data, size_t data_len, const struct sockaddr *addr);
 typedef void (*rp_data_recv_cb)(zend_object *server, const char *data, size_t data_len, const struct sockaddr *addr, unsigned flags);
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
+typedef void (*rp_reactor_async_init_cb)(void *data);
 typedef uv_connection_cb rp_connection_cb;
 typedef uv_udp_recv_cb rp_recv_cb;
 
