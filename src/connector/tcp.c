@@ -68,8 +68,6 @@ PHP_METHOD(respond_connector_tcp, connect)
 
     connector = rp_malloc(sizeof(rp_connector_t));
     rp_make_promise_object(&connector->promise);
-    connector->zo = Z_OBJ_P(self);
-    Z_ADDREF_P(self);
     RETVAL_ZVAL(&connector->promise, 1, 0);
 
     if(memchr(host->val, ':', host->len) == NULL) {
@@ -81,10 +79,11 @@ PHP_METHOD(respond_connector_tcp, connect)
 
     if(err != 0){
         rp_reject_promise_long(&connector->promise, err);
-        zend_object_ptr_dtor(connector->zo);
         rp_free(connector);
         return;
     }
 
+    connector->zo = Z_OBJ_P(self);
+    Z_ADDREF_P(self);
     rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
 }

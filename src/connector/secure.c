@@ -62,44 +62,50 @@ static void free_respond_connector_secure_resource(zend_object *object)
     zend_object_std_dtor(object);
 }
 
+static void connect_async_cb(rp_secure_connector_t *connector)
+{
+    uv_tcp_t *uv_tcp;
+    uv_tcp = rp_malloc(sizeof(uv_tcp_t));
+    uv_tcp_init(&main_loop, uv_tcp);
+    rp_socket_connect_ex(connector, uv_tcp, &connector->connector.addr, connection_cb);
+    fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
+}
+
 PHP_METHOD(respond_connector_secure, connect)
 {
     zval *self = getThis();
     rp_connector_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connector_secure_ext_t);
-    zend_string *host, *server_name;
+    zend_string *host;
     zend_long port;
     rp_secure_connector_t *connector;
-    rp_reactor_addr_t addr;
-    uv_tcp_t *uv_tcp;
+    int err;
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "SlS", &host, &port, &server_name)) {
+    connector = rp_malloc(sizeof(rp_secure_connector_t));
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "SlS", &host, &port, &connector->server_name)) {
+        rp_free(connector);
         return;
     }
 
+    rp_make_promise_object(&connector->connector.promise);
+    RETVAL_ZVAL(&connector->connector.promise, 1, 0);
+
     if(memchr(host->val, ':', host->len) == NULL) {
-        if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
-            return;
-        }
+        err = uv_ip4_addr(host->val, port & 0xffff, &connector->connector.addr.sockaddr);
     }
     else {
-        if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
-            return;
-        }
+        err = uv_ip6_addr(host->val, port & 0xffff, &connector->connector.addr.sockaddr6);
     }
 
-    uv_tcp = rp_malloc(sizeof(uv_tcp_t));
-    uv_tcp_init(&main_loop, uv_tcp);
-    connector = rp_malloc(sizeof(rp_secure_connector_t));
-    zend_string_addref(server_name);
-    connector->server_name = server_name;
+    if(err != 0){
+        rp_reject_promise_long(&connector->connector.promise, err);
+        rp_free(connector);
+        return;
+    }
 
-    rp_make_promise_object(&connector->connector.promise);
+    zend_string_addref(&connector->server_name);
     connector->connector.zo = Z_OBJ_P(self);
     Z_ADDREF_P(self);
-
-    rp_socket_connect_ex(connector, uv_tcp, &addr, connection_cb);
-    fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
-    RETVAL_ZVAL(&connector->connector.promise, 1, 0);
+    rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
 }
 
 static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
