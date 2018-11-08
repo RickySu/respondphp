@@ -7,10 +7,6 @@ RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_connector_pipe, connect), PRED
     ZEND_ARG_VARIADIC_INFO(0, arguments)
 ZEND_END_ARG_INFO()
 
-typedef struct {
-    uint flag;
-    zend_object zo;
-} rp_connector_pipe_ext_t;
-
+PHP_METHOD(respond_connector_pipe, __construct);
 PHP_METHOD(respond_connector_pipe, connect);
 #endif

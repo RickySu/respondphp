@@ -3,7 +3,8 @@
 
 DECLARE_FUNCTION_ENTRY(respond_socket_connector_interface) =
 {
-    PHP_ABSTRACT_ME(respond_socket_connector_interface, connect, ARGINFO(respond_socket_connector_interface, connect))
+    ZEND_FENTRY(__construct, NULL, NULL, ZEND_ACC_PRIVATE | ZEND_ACC_ABSTRACT)
+    ZEND_FENTRY(connect, NULL, ARGINFO(respond_socket_connector_interface, connect), ZEND_ACC_PUBLIC | ZEND_ACC_ABSTRACT | ZEND_ACC_STATIC)
     PHP_FE_END
 };
 

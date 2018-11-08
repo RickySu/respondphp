@@ -30,7 +30,7 @@ static void connection_cb(rp_connector_t *connector, int status)
     if(status < 0) {
         rp_reject_promise_long(&connector->promise, status);
         ZVAL_PTR_DTOR(&connector->promise);
-        zend_object_ptr_dtor(connector->zo);
+//        zend_object_ptr_dtor(connector->zo);
         uv_close(connector->connect_req.handle, rp_free_cb);
         rp_free(connector);
         return;
@@ -39,6 +39,6 @@ static void connection_cb(rp_connector_t *connector, int status)
     rp_stream_connection_factory(connector->connect_req.handle, &result);
     rp_resolve_promise(&connector->promise, &result);
     ZVAL_PTR_DTOR(&connector->promise);
-    zend_object_ptr_dtor(connector->zo);
+//    zend_object_ptr_dtor(connector->zo);
     rp_free(connector);
 }

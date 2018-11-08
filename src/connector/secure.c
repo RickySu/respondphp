@@ -7,13 +7,11 @@
 
 DECLARE_FUNCTION_ENTRY(respond_connector_secure) =
 {
-    PHP_ME(respond_connector_secure, connect, ARGINFO(respond_connector_secure, connect), ZEND_ACC_PUBLIC)
+    PHP_ME(respond_connector_secure, __construct, NULL, ZEND_ACC_PRIVATE | ZEND_ACC_FINAL)
+    PHP_ME(respond_connector_secure, connect, ARGINFO(respond_connector_secure, connect), ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_FE_END
 };
 
-static zend_object *create_respond_connector_secure_resource(zend_class_entry *class_type);
-static void free_respond_connector_secure_resource(zend_object *object);
-static void releaseResource(rp_connector_secure_ext_t *resource);
 static void connection_cb(rp_secure_connector_t *connector, int status);
 static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx);
 static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *connection_secure_resource);
@@ -24,42 +22,15 @@ static void releaseConnector(rp_secure_connector_t *connector);
 
 CLASS_ENTRY_FUNCTION_D(respond_connector_secure)
 {
-    REGISTER_CLASS_WITH_OBJECT_NEW(respond_connector_secure, "Respond\\Connector\\Secure", create_respond_connector_secure_resource);
-    OBJECT_HANDLER(respond_connector_secure).offset = XtOffsetOf(rp_connector_secure_ext_t, zo);
-    OBJECT_HANDLER(respond_connector_secure).clone_obj = NULL;
-    OBJECT_HANDLER(respond_connector_secure).free_obj = free_respond_connector_secure_resource;
+    REGISTER_CLASS(respond_connector_secure, "Respond\\Connector\\Secure");
     zend_class_implements(CLASS_ENTRY(respond_connector_secure), 1, CLASS_ENTRY(respond_socket_connector_interface));
 }
 
 static void releaseConnector(rp_secure_connector_t *connector)
 {
-    zend_object_ptr_dtor(connector->connector.zo);
     ZVAL_PTR_DTOR(&connector->connector.promise);
     zend_string_release(connector->server_name);
     rp_free(connector);
-}
-
-static void releaseResource(rp_connector_secure_ext_t *resource)
-{
-}
-
-static zend_object *create_respond_connector_secure_resource(zend_class_entry *ce)
-{
-    rp_connector_secure_ext_t *resource;
-    resource = ALLOC_RESOURCE(rp_connector_secure_ext_t, ce);
-    fprintf(stderr, "resource: %p\n", resource);
-    zend_object_std_init(&resource->zo, ce);
-    object_properties_init(&resource->zo, ce);    
-    resource->zo.handlers = &OBJECT_HANDLER(respond_connector_secure);
-    return &resource->zo;
-}
-
-static void free_respond_connector_secure_resource(zend_object *object)
-{
-    rp_connector_secure_ext_t *resource;
-    resource = FETCH_RESOURCE(object, rp_connector_secure_ext_t);
-    releaseResource(resource);
-    zend_object_std_dtor(object);
 }
 
 static void connect_async_cb(rp_secure_connector_t *connector)
@@ -71,10 +42,13 @@ static void connect_async_cb(rp_secure_connector_t *connector)
     fprintf(stderr, "connect: %p %p\n", connector, uv_tcp);
 }
 
+PHP_METHOD(respond_connector_secure, __construct)
+{
+
+}
+
 PHP_METHOD(respond_connector_secure, connect)
 {
-    zval *self = getThis();
-    rp_connector_secure_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_connector_secure_ext_t);
     zend_string *host;
     zend_long port;
     rp_secure_connector_t *connector;
@@ -103,8 +77,6 @@ PHP_METHOD(respond_connector_secure, connect)
     }
 
     zend_string_addref(&connector->server_name);
-    connector->connector.zo = Z_OBJ_P(self);
-    Z_ADDREF_P(self);
     rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
 }
 
@@ -196,7 +168,6 @@ static void connection_cb(rp_secure_connector_t *connector, int status)
         zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &param);
         rp_reject_promise(&connector->connector.promise, &exception);
         ZVAL_PTR_DTOR(&connector->connector.promise);
-        zend_object_ptr_dtor(connector->connector.zo);
         uv_close(connector->connector.connect_req.handle, rp_free_cb);
         rp_free(connector);
         return;

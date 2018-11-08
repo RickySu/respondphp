@@ -8,15 +8,11 @@ RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_connector_secure, connect), PR
 ZEND_END_ARG_INFO()
 
 typedef struct {
-    uint flag;
-    zend_object zo;
-} rp_connector_secure_ext_t;
-
-typedef struct {
     rp_connector_t connector;
     zend_string *server_name;
     rp_stream_secure_ext_t *connection_secure_resource;
 } rp_secure_connector_t;
 
 PHP_METHOD(respond_connector_secure, connect);
+PHP_METHOD(respond_connector_secure, __construct);
 #endif
