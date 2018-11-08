@@ -29,9 +29,10 @@ typedef struct {
         } name;
     } info;
     zval promise;
-    zend_object *zo;
+//    zend_object *zo;
 } rp_resolver_into_t;
 
+PHP_METHOD(respond_network_resolver, __construct);
 PHP_METHOD(respond_network_resolver, getaddrinfo);
 PHP_METHOD(respond_network_resolver, getnameinfo);
 #endif //_RP_NETWORK_RESOLVER_H

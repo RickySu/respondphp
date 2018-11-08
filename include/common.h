@@ -55,9 +55,9 @@
     REGISTER_INTERNAL_CLASS_EX(name, base); \
     CLASS_ENTRY(name)->create_object = create_function    
  
-#define REGISTER_CLASS(name) \
+#define REGISTER_CLASS(name, ns_name) \
     zend_class_entry ce; \
-    INIT_CLASS_ENTRY(ce, #name, FUNCTION_ENTRY(name)); \
+    INIT_CLASS_ENTRY(ce, ns_name, FUNCTION_ENTRY(name)); \
     REGISTER_INTERNAL_CLASS(name)
     
 #define EXTENDS_CLASS(name, base) \
