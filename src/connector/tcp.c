@@ -55,6 +55,7 @@ PHP_METHOD(respond_connector_tcp, connect)
 
     if(err != 0){
         rp_reject_promise_long(&connector->promise, err);
+        ZVAL_PTR_DTOR(&connector->promise);
         rp_free(connector);
         return;
     }

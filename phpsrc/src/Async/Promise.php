@@ -8,6 +8,7 @@ class Promise implements PromiseInterface
     protected $onFinaled;
     protected $nextPromise;
     protected $value;
+    protected $canceller;
     protected $settleState = self::PENDING;
 
     public static function wrap($value)
@@ -17,12 +18,20 @@ class Promise implements PromiseInterface
         });
     }
 
-    public function __construct(callable $executor = null)
+    public function __construct(callable $executor = null, callable $canceller = null)
     {
         if ($executor === null) {
             return;
         }
         $this->execute($executor);
+        $this->canceller = $canceller;
+    }
+
+    public function cancel()
+    {
+        if($this->canceller){
+            call_user_func($this->canceller);
+        }
     }
 
     public function then(callable $onFullfilled = null, callable $onRejcted = null, callable $onFinaled = null): ?PromiseInterface

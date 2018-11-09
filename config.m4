@@ -133,6 +133,8 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/routine_manager.c
     src/worker_manager.c
     src/network/resolver.c
+    src/system/timer.c
+    src/system/timer_promise.c
     src/server/udp.c
     src/server/tcp.c
     src/server/pipe.c

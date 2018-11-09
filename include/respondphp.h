@@ -72,6 +72,7 @@ DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_connection_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
 DECLARE_CLASS_ENTRY(respond_network_resolver);
+DECLARE_CLASS_ENTRY(respond_system_timer);
 
 #ifdef HAVE_OPENSSL
 DECLARE_CLASS_ENTRY(respond_server_secure);
@@ -152,9 +153,14 @@ static zend_always_inline zend_class_entry *rp_fetch_ce(char *class_name, size_t
     return ce;
 }
 
+static zend_always_inline void rp_make_promise_object_ex(zval *promise, zend_class_entry *ce)
+{
+    object_init_ex(promise, ce);
+}
+
 static zend_always_inline void rp_make_promise_object(zval *promise)
 {
-    object_init_ex(promise, rp_promise_ce);
+    rp_make_promise_object_ex(promise, rp_promise_ce);
 }
 
 zend_always_inline static void rp_reject_promise_long(zval *promise, int err)

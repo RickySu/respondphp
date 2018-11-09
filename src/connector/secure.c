@@ -72,6 +72,7 @@ PHP_METHOD(respond_connector_secure, connect)
 
     if(err != 0){
         rp_reject_promise_long(&connector->connector.promise, err);
+        ZVAL_PTR_DTOR(&connector->connector.promise);
         rp_free(connector);
         return;
     }
@@ -122,6 +123,7 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
                 object_init_ex(&exception, zend_ce_exception);
                 zend_call_method_with_1_params(&exception, NULL, &Z_OBJCE(exception)->constructor, "__construct", NULL, &err_message);
                 rp_reject_promise(&connector->connector.promise, &exception);
+                ZVAL_PTR_DTOR(&connector->connector.promise);
                 ZVAL_PTR_DTOR(&exception);
                 ZVAL_PTR_DTOR(&err_message);
 
