@@ -71,6 +71,7 @@ DECLARE_CLASS_ENTRY(respond_stream_writable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_readable_stream_interface);
 DECLARE_CLASS_ENTRY(respond_stream_connection_interface);
 DECLARE_CLASS_ENTRY(respond_socket_connector_interface);
+DECLARE_CLASS_ENTRY(respond_async_promise_interface);
 DECLARE_CLASS_ENTRY(respond_network_resolver);
 DECLARE_CLASS_ENTRY(respond_system_timer);
 

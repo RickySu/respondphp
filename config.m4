@@ -154,6 +154,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/interface/stream_readable_stream_interface.c
     src/interface/stream_connection_interface.c
     src/interface/socket_connector_interface.c
+    src/interface/async_promise_interface.c
   "
 
   PHP_NEW_EXTENSION(respondphp, $modules, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)

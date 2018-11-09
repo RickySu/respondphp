@@ -77,6 +77,9 @@
 #define REGISTER_CLASS_CONSTANT_LONG(class, name) \
     zend_declare_class_constant_long(CLASS_ENTRY(class), ZEND_STRL(#name), name)
 
+#define REGISTER_CLASS_CONSTANT_STRING(class, name, value) \
+    zend_declare_class_constant_string(CLASS_ENTRY(class), ZEND_STRL(#name), value)
+
 #define ALLOC_RESOURCE(x, ce) ecalloc(1, sizeof(x) + zend_object_properties_size(ce))
 
 #define Z_DELREF_AND_DTOR_P(o) \
@@ -114,9 +117,11 @@ PHP_METHOD(ce, method_name) \
 
 #if PHP_VERSION_ID >= 70200
     #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO
+    #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO
     #define RP_BEGIN_ARG_INFO(name, type, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, type, allow_null)
 #else
     #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(name, class_name, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, IS_OBJECT, class_name, allow_null)
+    #define RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(name, return_reference, required_num_args, class_name, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(name, return_reference, required_num_args, IS_OBJECT, class_name, allow_null)
     #define RP_BEGIN_ARG_INFO(name, type, allow_null) ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO(name, type, NULL, allow_null)
 #endif
 

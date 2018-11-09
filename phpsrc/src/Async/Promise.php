@@ -34,7 +34,7 @@ class Promise implements PromiseInterface
         }
     }
 
-    public function then(callable $onFullfilled = null, callable $onRejcted = null, callable $onFinaled = null): ?PromiseInterface
+    public function then(callable $onFullfilled = null, callable $onRejcted = null, callable $onFinaled = null): PromiseInterface
     {
         $this->onFullfilled = $onFullfilled;
         $this->onRejected = $onRejcted;
@@ -56,17 +56,17 @@ class Promise implements PromiseInterface
         return $this->nextPromise;
     }
 
-    public function catch(callable $onRejcted): ?PromiseInterface
+    public function catch(callable $onRejcted): PromiseInterface
     {
         return $this->then(null, $onRejcted);
     }
 
-    public function finally(callable $onFinaled): ?PromiseInterface
+    public function finally(callable $onFinaled): PromiseInterface
     {
         return $this->then(null, null, $onFinaled);
     }
 
-    public static function all(array $promises): ?PromiseInterface
+    public static function all(array $promises): PromiseInterface
     {
         return new self(function ($resolve, $reject) use ($promises) {
             $promisesCount = count($promises);
@@ -183,7 +183,7 @@ class Promise implements PromiseInterface
         }
     }
 
-    public static function race(array $promises): ?PromiseInterface
+    public static function race(array $promises): PromiseInterface
     {
         return new self(function ($resolve, $reject) use ($promises) {
             /** @var PromiseInterface $promise */

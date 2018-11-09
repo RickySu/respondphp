@@ -16,6 +16,7 @@ static void declare_interfaces()
     CLASS_ENTRY_FUNCTION_C(respond_stream_readable_stream_interface);
     CLASS_ENTRY_FUNCTION_C(respond_stream_connection_interface);
     CLASS_ENTRY_FUNCTION_C(respond_socket_connector_interface);
+    CLASS_ENTRY_FUNCTION_C(respond_async_promise_interface);
 }
 
 zend_module_entry respondphp_module_entry =
