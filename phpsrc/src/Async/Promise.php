@@ -34,11 +34,17 @@ class Promise implements PromiseInterface
         }
     }
 
-    public function then(callable $onFullfilled = null, callable $onRejcted = null, callable $onFinaled = null): PromiseInterface
+    public function then(callable $onFullfilled = null, callable $onRejected = null, callable $onFinaled = null): PromiseInterface
     {
-        $this->onFullfilled = $onFullfilled;
-        $this->onRejected = $onRejcted;
-        $this->onFinaled = $onFinaled;
+        if($onFullfilled !== null){
+            $this->onFullfilled = $onFullfilled;
+        }
+        if($onRejected !== $onRejected){
+            $this->onRejected = $onRejected;
+        }
+        if($onFinaled !== null){
+            $this->onFinaled = $onFinaled;
+        }
 
         $this->nextPromise =  new static(function ($resolve, $reject) {
             $this->resolve = $resolve;
@@ -56,9 +62,9 @@ class Promise implements PromiseInterface
         return $this->nextPromise;
     }
 
-    public function catch(callable $onRejcted): PromiseInterface
+    public function catch(callable $onRejected): PromiseInterface
     {
-        return $this->then(null, $onRejcted);
+        return $this->then(null, $onRejected);
     }
 
     public function finally(callable $onFinaled): PromiseInterface
