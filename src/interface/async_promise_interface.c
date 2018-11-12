@@ -9,8 +9,6 @@ DECLARE_FUNCTION_ENTRY(respond_async_promise_interface) =
     PHP_ABSTRACT_ME(respond_async_promise_interface, resolve, ARGINFO(respond_async_promise_interface, resolve))
     PHP_ABSTRACT_ME(respond_async_promise_interface, reject, ARGINFO(respond_async_promise_interface, reject))
     PHP_ABSTRACT_ME(respond_async_promise_interface, cancel, NULL)
-    ZEND_FENTRY(all, NULL, ARGINFO(respond_async_promise_interface, all), ZEND_ACC_PUBLIC | ZEND_ACC_ABSTRACT | ZEND_ACC_STATIC)
-    ZEND_FENTRY(race, NULL, ARGINFO(respond_async_promise_interface, race), ZEND_ACC_PUBLIC | ZEND_ACC_ABSTRACT | ZEND_ACC_STATIC)
     PHP_FE_END
 };
 

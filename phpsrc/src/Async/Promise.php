@@ -123,6 +123,7 @@ class Promise implements PromiseInterface
         $this->value = $reason;
         $this->settleState = self::REJECTED;
         $this->settleReject();
+        $this->value = null;
     }
 
     protected function settleFullfill()

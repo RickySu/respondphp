@@ -1,6 +1,6 @@
 #include "respondphp.h"
 #include "system/timer.h"
-#include "system/timer_promise.h"
+#include "async/cancelable_promise.h"
 
 static void timer_async_cb(rp_timer_t *timer);
 static void timer_cb(rp_timer_t* timer);
@@ -32,6 +32,7 @@ void timer_cancel_cb(rp_timer_t *timer)
 {
     fprintf(stderr, "promise:%p\n", Z_OBJ_P(&timer->promise));
     uv_timer_stop(&timer->handle);
+    rp_reject_promise_long(&timer->promise, -1);
     ZVAL_PTR_DTOR(&timer->promise);
     rp_free(timer);
 }
@@ -57,15 +58,15 @@ PHP_METHOD(respond_system_timer, timeout)
 {
     zend_long milliseconds;
     rp_timer_t *timer;
-    rp_system_timer_promise_t *promise_resource;
+    rp_async_cancelable_promise_t *promise_resource;
 
     if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "l", &milliseconds)) {
         return;
     }
 
     timer = rp_malloc(sizeof(rp_timer_t));
-    rp_make_promise_object_ex(&timer->promise, CLASS_ENTRY(respond_system_timer_promise));
-    promise_resource = FETCH_OBJECT_RESOURCE(&timer->promise, rp_system_timer_promise_t);
+    rp_make_promise_object_ex(&timer->promise, CLASS_ENTRY(respond_async_cancelable_promise));
+    promise_resource = FETCH_OBJECT_RESOURCE(&timer->promise, rp_async_cancelable_promise_t);
     promise_resource->cancel.data = timer;
     promise_resource->cancel.cb = (rp_timer_promise_cancel_cb) timer_cancel_cb;
     RETVAL_ZVAL(&timer->promise, 1, 0);
