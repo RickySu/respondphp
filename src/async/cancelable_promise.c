@@ -24,31 +24,34 @@ CLASS_ENTRY_FUNCTION_D(respond_async_cancelable_promise)
     OBJECT_HANDLER(respond_async_cancelable_promise).clone_obj = NULL;
     OBJECT_HANDLER(respond_async_cancelable_promise).free_obj = free_respond_async_cancelable_promise_resource;
     zend_class_implements(CLASS_ENTRY(respond_async_cancelable_promise), 1, CLASS_ENTRY(respond_async_promise_interface));
+    zend_declare_property_null(CLASS_ENTRY(respond_async_cancelable_promise), ZEND_STRL("promise"), ZEND_ACC_PRIVATE);
 }
 
 static void forward_call(zval *self, const char *fn, int nargs, zval *args)
 {
-    zval retval, function;
-    rp_async_cancelable_promise_t *resource = FETCH_OBJECT_RESOURCE(self, rp_async_cancelable_promise_t);
-    fprintf(stderr, "call %s with %d args\n", fn, nargs);
+    zval retval, function, *promise, rv;
+    promise = zend_read_property(CLASS_ENTRY(respond_async_cancelable_promise), self, ZEND_STRL("promise"), 1, &rv);
     ZVAL_STRING(&function, fn);
-    call_user_function(NULL, &resource->promise, &function, &retval, nargs, args);
-    fprintf(stderr, "%p %p", Z_STR_P(&function), Z_TYPE_P(&retval) == IS_OBJECT?Z_OBJ_P(&retval):NULL);
+    call_user_function(NULL, promise, &function, &retval, nargs, args);
     ZVAL_PTR_DTOR(&function);
     ZVAL_PTR_DTOR(&retval);
 }
 
 static zend_object *create_respond_async_cancelable_promise_resource(zend_class_entry *ce)
 {
+    zval thisObject, promise;
     rp_async_cancelable_promise_t *resource;
     resource = ALLOC_RESOURCE(rp_async_cancelable_promise_t, ce);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_async_cancelable_promise);
-    rp_make_promise_object(&resource->promise);
-
+    rp_make_promise_object(&promise);
+    ZVAL_OBJ(&thisObject, &resource->zo);
+    zend_update_property(CLASS_ENTRY(respond_async_cancelable_promise), &thisObject, ZEND_STRL("promise"), &promise);
+    ZVAL_PTR_DTOR(&promise);
+    RP_ASSERT(Z_REFCOUNT_P(&promise) == 1);
     fprintf(stderr, "timer promise:%p\n", &resource->zo);
-    fprintf(stderr, "promise:%p\n", Z_OBJ_P(&resource->promise));
+    fprintf(stderr, "promise:%p\n", Z_OBJ_P(&promise));
     return &resource->zo;
 }
 
@@ -56,9 +59,8 @@ static void free_respond_async_cancelable_promise_resource(zend_object *object)
 {
     rp_async_cancelable_promise_t *resource;
     resource = FETCH_RESOURCE(object, rp_async_cancelable_promise_t);
-    ZVAL_PTR_DTOR(&resource->promise);
     zend_object_std_dtor(object);
-    fprintf(stderr, "timer promise free\n");
+    fprintf(stderr, "timer promise free gc\n");
 }
 
 PHP_METHOD(respond_async_cancelable_promise, __construct)
@@ -138,8 +140,8 @@ PHP_METHOD(respond_async_cancelable_promise, cancel)
 {
     zval *self = getThis();
     rp_async_cancelable_promise_t *resource = FETCH_OBJECT_RESOURCE(self, rp_async_cancelable_promise_t);
+    fprintf(stderr, "cancel promise %p %d\n", Z_OBJ_P(self), Z_REFCOUNT_P(self));
     if(resource->cancel.cb != NULL){
         resource->cancel.cb(resource->cancel.data);
     }
 }
-

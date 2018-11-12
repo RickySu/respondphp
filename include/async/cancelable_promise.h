@@ -7,7 +7,6 @@ typedef void (*rp_timer_promise_cancel_cb)(void *data);
 CLASS_ENTRY_FUNCTION_D(respond_async_cancelable_promise);
 
 typedef struct {
-    zval promise;
     struct {
         rp_timer_promise_cancel_cb cb;
         void *data;
