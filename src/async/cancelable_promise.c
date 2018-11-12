@@ -29,29 +29,31 @@ CLASS_ENTRY_FUNCTION_D(respond_async_cancelable_promise)
 
 static void forward_call(zval *self, const char *fn, int nargs, zval *args)
 {
-    zval retval, function, *promise, rv;
-    promise = zend_read_property(CLASS_ENTRY(respond_async_cancelable_promise), self, ZEND_STRL("promise"), 1, &rv);
+    zval retval, function;
+    rp_async_cancelable_promise_t *resource;
+    resource = FETCH_OBJECT_RESOURCE(self, rp_async_cancelable_promise_t);
+    fprintf(stderr, "forward call promise: %p\n", Z_OBJ_P(&resource->promise));
     ZVAL_STRING(&function, fn);
-    call_user_function(NULL, promise, &function, &retval, nargs, args);
+    call_user_function(NULL, &resource->promise, &function, &retval, nargs, args);
     ZVAL_PTR_DTOR(&function);
     ZVAL_PTR_DTOR(&retval);
 }
 
 static zend_object *create_respond_async_cancelable_promise_resource(zend_class_entry *ce)
 {
-    zval thisObject, promise;
+    zval thisObject;
     rp_async_cancelable_promise_t *resource;
     resource = ALLOC_RESOURCE(rp_async_cancelable_promise_t, ce);
     zend_object_std_init(&resource->zo, ce);
     object_properties_init(&resource->zo, ce);
     resource->zo.handlers = &OBJECT_HANDLER(respond_async_cancelable_promise);
-    rp_make_promise_object(&promise);
+    rp_make_promise_object(&resource->promise);
     ZVAL_OBJ(&thisObject, &resource->zo);
-    zend_update_property(CLASS_ENTRY(respond_async_cancelable_promise), &thisObject, ZEND_STRL("promise"), &promise);
-    ZVAL_PTR_DTOR(&promise);
-    RP_ASSERT(Z_REFCOUNT_P(&promise) == 1);
+    zend_update_property(CLASS_ENTRY(respond_async_cancelable_promise), &thisObject, ZEND_STRL("promise"), &resource->promise);
+    ZVAL_PTR_DTOR(&resource->promise);
+    RP_ASSERT(Z_REFCOUNT_P(&resource->promise) == 1);
     fprintf(stderr, "timer promise:%p\n", &resource->zo);
-    fprintf(stderr, "promise:%p\n", Z_OBJ_P(&promise));
+    fprintf(stderr, "promise: %p\n", Z_OBJ_P(&resource->promise));
     return &resource->zo;
 }
 

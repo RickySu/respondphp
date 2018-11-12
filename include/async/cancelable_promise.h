@@ -11,6 +11,7 @@ typedef struct {
         rp_timer_promise_cancel_cb cb;
         void *data;
     } cancel;
+    zval promise;
     zend_object zo;
 } rp_async_cancelable_promise_t;
 
