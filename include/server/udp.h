@@ -23,6 +23,12 @@ typedef struct {
     zend_object zo;
 } rp_udp_ext_t;
 
+typedef struct {
+    uv_udp_send_t send;
+    uv_buf_t buf;
+    rp_reactor_data_send_req_payload_send_t *payload;
+} rp_udp_send_t;
+
 PHP_METHOD(respond_server_udp, close);
 PHP_METHOD(respond_server_udp, send);
 PHP_METHOD(respond_server_udp, __construct);

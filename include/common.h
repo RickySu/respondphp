@@ -68,7 +68,9 @@
 #define ARGINFO(classname, method) \
     arginfo_##classname##_##method
 
-#define FETCH_RESOURCE(pointer, type) (type *) ((void *)pointer - XtOffsetOf(type, zo))
+#define FETCH_POINTER(pointer, type, base) ((type *) ((void *)pointer - XtOffsetOf(type, base)))
+
+#define FETCH_RESOURCE(pointer, type) (type *) FETCH_POINTER(pointer, type, zo)
 
 #define FETCH_RESOURCE_FROM_EXTEND(pointer, item, type) (type *) ((void *)pointer - XtOffsetOf(type, item))
     

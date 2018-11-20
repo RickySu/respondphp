@@ -15,7 +15,6 @@ static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
-static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send_req_t *req);
 static void reactor_free(zval *reactor_p);
 static void reactor_async_init_free(zval *data);
 
@@ -126,22 +125,24 @@ static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 {
     rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
-    if(status > 0){
-        rp_reactor_data_dispatch(reactor_ext->reactor, (rp_reactor_data_send_req_t *) reactor_ext->data);
+    rp_reactor_data_send_req_t *req;
+    if(status <= 0){
+        rp_free(buf->base);
+        return;
     }
-    rp_free(buf->base);
-}
+    req = (rp_reactor_data_send_req_t *) reactor_ext->data;
 
-static void rp_reactor_data_dispatch(rp_reactor_t *reactor, rp_reactor_data_send_req_t *req)
-{
     switch(req->type) {
         case RP_SEND:
-            reactor->cb.dgram.send(reactor, req->payload.send.data, req->payload.send.data_len, &req->payload.send.addr);
+            fprintf(stderr, "rp_send:%p %p\n", req, buf->base);
+            reactor_ext->reactor->cb.dgram.send(reactor_ext->reactor, &req->payload.send);
             break;
         case RP_RECV:
-            reactor->cb.dgram.data_recv(reactor->server, req->payload.recv.data, req->payload.recv.data_len, &req->payload.recv.addr, req->payload.recv.flags);
+            reactor_ext->reactor->cb.dgram.data_recv(reactor_ext->reactor->server, &req->payload.recv);
+            rp_free(buf->base);
             break;
         default:
+            rp_free(buf->base);
             break;
     }
 }
