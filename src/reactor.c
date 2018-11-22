@@ -17,6 +17,7 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
 static void reactor_free(zval *reactor_p);
 static void reactor_async_init_free(zval *data);
+static void rp_reactor_actor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
@@ -28,6 +29,7 @@ static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
             break;
         case RP_PIPE:
         case RP_ROUTINE:
+        case RP_UDP:
             uv_pipe_init(&main_loop, (uv_pipe_t *) client, 0);
             break;
         default:
@@ -122,10 +124,25 @@ static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *
     rp_free(buf->base);
 }
 
+static void rp_reactor_actor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
+{
+    rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
+
+    if (!uv_pipe_pending_count(pipe)) {
+        rp_free(buf->base);
+        return;
+    }
+
+    fprintf(stderr, "reactor actor ipc recv: %d %p\n", status, reactor_ext->reactor);
+    rp_reactor_data_receive(pipe, status, buf);
+}
+
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
 {
     rp_reactor_ext_t *reactor_ext = (rp_reactor_ext_t *) buf->base;
     rp_reactor_data_send_req_t *req;
+    rp_stream_t *result_stream;
+
     if(status <= 0){
         rp_free(buf->base);
         return;
@@ -135,7 +152,9 @@ static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t 
     switch(req->type) {
         case RP_SEND:
             fprintf(stderr, "rp_send:%p %p\n", req, buf->base);
-            reactor_ext->reactor->cb.dgram.send(reactor_ext->reactor, &req->payload.send);
+            if((result_stream = rp_accept_client(pipe, reactor_ext->reactor)) != NULL) {
+                reactor_ext->reactor->cb.dgram.send(reactor_ext->reactor, &req->payload.send, result_stream);
+            }
             break;
         case RP_RECV:
             reactor_ext->reactor->cb.dgram.data_recv(reactor_ext->reactor->server, &req->payload.recv);
@@ -173,6 +192,7 @@ static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
     uv_pipe_init(&main_loop, &data_pipe, 0);
     uv_pipe_open(&ipc_pipe, worker_ipc_fd);
     uv_pipe_open(&data_pipe, worker_data_fd);
+    uv_read_start((uv_stream_t*) &ipc_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_actor_ipc_receive);
     uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive);
 
     for(

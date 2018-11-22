@@ -16,7 +16,7 @@ typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_t
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
 typedef enum {RP_RECV, RP_SEND} rp_reactor_data_send_type_t;
 typedef void (*rp_server_init_cb)(struct rp_reactor_s *reactor);
-typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, struct rp_reactor_data_send_req_payload_send_s *send_req);
+typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, struct rp_reactor_data_send_req_payload_send_s *send_req, struct rp_stream_s *result_stream);
 typedef void (*rp_data_recv_cb)(zend_object *server, struct rp_reactor_data_send_req_payload_recv_s *recv_req);
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
 typedef void (*rp_reactor_async_init_cb)(void *data);

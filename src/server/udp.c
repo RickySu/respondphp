@@ -11,13 +11,15 @@ DECLARE_FUNCTION_ENTRY(respond_server_udp) =
 
 static zend_object *create_respond_server_udp_resource(zend_class_entry *class_type);
 static void free_respond_server_udp_resource(zend_object *object);
-static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload);
+static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload, rp_stream_t *result_stream);
 static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
 static void data_recv_cb(zend_object *server, rp_reactor_data_send_req_payload_recv_t *recv_req);
 static void releaseResource(rp_udp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
-static void udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
+static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
 static void udp_send_cb(rp_udp_send_t *udp_send, int status);
+static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf);
+void result_send_cb(uv_write_t* req, int status);
 
 static void server_init(rp_reactor_t *reactor)
 {
@@ -39,16 +41,25 @@ static void releaseResource(rp_udp_ext_t *resource)
 {
 }
 
+void result_send_cb(uv_write_t* req, int status)
+{
+    uv_close(req->handle, rp_free_cb);
+    rp_free(req);
+}
+
 static void udp_send_cb(rp_udp_send_t *udp_send, int status)
 {
+    rp_write_req_t *req;
     rp_reactor_data_send_req_t *send_req = FETCH_POINTER(udp_send->payload, rp_reactor_data_send_req_t, payload);
     rp_reactor_ext_t *reactor_ext = FETCH_POINTER(send_req, rp_reactor_ext_t, data);
     fprintf(stderr, "send status: %p %p %d %d\n", send_req, reactor_ext, udp_send->payload->sender, status);
+    req = rp_make_write_req((char *) &status, sizeof(status));
+    uv_write(req, udp_send->result_stream, &req->buf, 1, (uv_write_cb) result_send_cb);
     rp_free(reactor_ext);
     rp_free(udp_send);
 }
 
-static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload)
+static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload, rp_stream_t *result_stream)
 {
     char addr_str[INET6_ADDRSTRLEN];
     uint16_t port;
@@ -57,6 +68,7 @@ static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send
     udp_send->buf.base = payload->data;
     udp_send->buf.len = payload->data_len;
     udp_send->payload = payload;
+    udp_send->result_stream = result_stream;
     sock_addr(&payload->addr, addr_str, INET6_ADDRSTRLEN, &port);
     int ret = uv_udp_send(udp_send, &reactor->handler, &udp_send->buf, 1, &payload->addr, udp_send_cb);
     fprintf(stderr, "req send start %d (%d) %s %p %.*s %s\n", payload->sender, ret, uv_strerror(ret), udp_send, udp_send->buf.len, udp_send->buf.base, addr_str);
@@ -167,6 +179,7 @@ PHP_METHOD(respond_server_udp, send)
     zend_string *host, *data;
     long port;
     rp_reactor_addr_t addr;
+    rp_udp_send_resul_t *result;
 
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
 
@@ -185,11 +198,30 @@ PHP_METHOD(respond_server_udp, send)
         }
     }
 
-    udp_send_data(resource->reactor, data, &addr);
+    result = udp_send_data(resource->reactor, data, &addr);
+    RETVAL_ZVAL(&result->promise, 1, 0);
 }
 
-static void udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
+static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf)
 {
+    zval send_result;
+    fprintf(stderr, "result %p\n", result);
+    if(status > 0){
+        ZVAL_LONG(&send_result, *((int *) buf->base));
+        rp_resolve_promise(&result->promise, &send_result);
+    }
+    else{
+        rp_reject_promise_long(&result->promise, status);
+    }
+    ZVAL_PTR_DTOR(&result->promise);
+    uv_close((uv_handle_t *) &result->worker_pipe, (uv_close_cb) rp_free_cb);
+    rp_free(buf->base);
+}
+
+static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
+{
+    int fd[2];
+    rp_udp_send_resul_t *result;
     rp_reactor_data_send_req_t *req;
     size_t size_of_req_data;
     size_of_req_data = sizeof(rp_reactor_data_send_req_t) + data->len;
@@ -199,8 +231,24 @@ static void udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_a
     memcpy(&req->payload.send.addr, addr, sizeof(rp_reactor_addr_t));
     req->payload.send.data_len = data->len;
     memcpy(&req->payload.send.data, data->val, data->len);
-    rp_reactor_data_send(reactor, rp_free_cb, req, size_of_req_data);
+
+    result = emalloc(sizeof(rp_udp_send_resul_t));
+    rp_make_promise_object(&result->promise);
+
+    socketpair(AF_UNIX, SOCK_STREAM, 0, fd);
+
+    uv_pipe_init(&main_loop, &result->actor_pipe, 0);
+    uv_pipe_open(&result->actor_pipe, fd[0]);
+
+    uv_pipe_init(&main_loop, &result->worker_pipe, 0);
+    uv_pipe_open(&result->worker_pipe, fd[1]);
+    fprintf(stderr, "read start: %d\n", getpid());
+    uv_read_start(&result->worker_pipe, rp_alloc_buffer, (uv_read_cb) udp_send_result_receive);
+
+    rp_reactor_ipc_send_ex(reactor, (uv_stream_t *) &result->actor_pipe, NULL, req, size_of_req_data, &ipc_pipe);
+    fprintf(stderr, "pipe socket send: %p %p %d\n", reactor, result, getpid());
     rp_free(req);
+    return result;
 }
 
 PHP_METHOD(respond_server_udp, close)

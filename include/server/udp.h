@@ -9,8 +9,7 @@ ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_udp, __construct), 0)
     ZEND_ARG_INFO(0, port)
 ZEND_END_ARG_INFO()
 
-
-ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_udp, send), 0)
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_server_udp, send), "Respond\\Async\\PromiseInterface", 0)
     ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
     ZEND_ARG_TYPE_INFO(0, port, IS_LONG, 0)
     ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
@@ -27,7 +26,14 @@ typedef struct {
     uv_udp_send_t send;
     uv_buf_t buf;
     rp_reactor_data_send_req_payload_send_t *payload;
+    rp_stream_t *result_stream;
 } rp_udp_send_t;
+
+typedef struct {
+    uv_pipe_t worker_pipe;
+    uv_pipe_t actor_pipe;
+    zval promise;
+} rp_udp_send_resul_t;
 
 PHP_METHOD(respond_server_udp, close);
 PHP_METHOD(respond_server_udp, send);
