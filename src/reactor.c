@@ -58,38 +58,6 @@ void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
     buf->len = suggested_size;
 }
 
-static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
-{
-    int ret;
-
-    if((ret = uv_pipe_init(&main_loop, &ipc_pipe, 1)) < 0){
-        return ret;
-    }
-
-    if((ret = uv_pipe_open(&ipc_pipe, worker_ipc_fd)) < 0){
-        return ret;
-    }
-
-    if((ret = uv_read_start((uv_stream_t*) &ipc_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive)) < 0){
-        return ret;
-    }
-
-    if((ret = uv_pipe_init(&main_loop, &data_pipe, 1)) < 0){
-        return ret;
-    }
-
-    if((ret = uv_pipe_open(&data_pipe, worker_data_fd)) < 0){
-        return ret;
-    }
-
-    if((ret = uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive)) < 0){
-        return ret;
-    }
-
-    fprintf(stderr, "data pipe: %d %d\n", getpid(), ret);
-    return ret;
-}
-
 static int rp_init_routine_server(int routine_ipc_fd)
 {
     int ret;
@@ -205,6 +173,51 @@ static void rp_init_actor_server(int worker_ipc_fd, int worker_data_fd)
             reactor->server_init_cb(reactor);
         }
     }
+}
+
+static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
+{
+    int ret;
+    zval *current;
+    rp_reactor_t *reactor;
+
+    if((ret = uv_pipe_init(&main_loop, &ipc_pipe, 1)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_pipe_open(&ipc_pipe, worker_ipc_fd)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_read_start((uv_stream_t*) &ipc_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_ipc_receive)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_pipe_init(&main_loop, &data_pipe, 1)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_pipe_open(&data_pipe, worker_data_fd)) < 0){
+        return ret;
+    }
+
+    if((ret = uv_read_start((uv_stream_t*) &data_pipe, rp_alloc_buffer, (uv_read_cb) rp_reactor_data_receive)) < 0){
+        return ret;
+    }
+
+    for(
+        zend_hash_internal_pointer_reset(&rp_reactors);
+        current = zend_hash_get_current_data(&rp_reactors);
+        zend_hash_move_forward(&rp_reactors)
+    ) {
+        reactor = Z_PTR_P(current);
+        if(reactor->worker_init_cb) {
+            reactor->worker_init_cb(reactor);
+        }
+    }
+
+    fprintf(stderr, "data pipe: %d %d\n", getpid(), ret);
+    return ret;
 }
 
 int rp_reactors_count()

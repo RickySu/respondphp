@@ -10,7 +10,8 @@ DECLARE_FUNCTION_ENTRY(respond_server_tcp) =
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *class_type);
 static void free_respond_server_tcp_resource(zend_object *object);
-static void connection_cb(rp_reactor_t *reactor, int status);
+static void ipc_connection_cb(rp_reactor_t *reactor, int status);
+static void socket_connection_cb(rp_reactor_t *reactor, int status);
 static void accepted_cb(zend_object *server, rp_stream_t *client);
 static void releaseResource(rp_server_tcp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
@@ -26,20 +27,32 @@ CLASS_ENTRY_FUNCTION_D(respond_server_tcp)
 
 static void server_init(rp_reactor_t *reactor)
 {
-    char addr_str[INET6_ADDRSTRLEN];
-    uint16_t port;
+    uv_os_fd_t sockfd;
     uv_tcp_init(&main_loop, &reactor->handler.tcp);
+    sockfd = socket(reactor->addr.sockaddr.sin_family, SOCK_STREAM, 0);
+
+//    SO_REUSEPORT
+#ifdef HAVE_REUSEPORT
+    int status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &(int){ 1 }, sizeof(int));
+    fprintf(stderr, "reuse port:%d %d\n", getpid(), status);
+#endif
+
+    uv_tcp_open(&reactor->handler.tcp, sockfd);
     uv_tcp_bind(&reactor->handler.tcp, (const struct sockaddr *) &reactor->addr, 0);
     uv_listen((uv_stream_t *) &reactor->handler.tcp, SOMAXCONN, reactor->cb.stream.connection);
+
+    uint16_t port;
+    char addr_str[INET6_ADDRSTRLEN];
     sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
     fprintf(stderr, "tcp listen: %s:%d\n", addr_str, port);
 }
 
+//HAVE_REUSEPORT
 static void releaseResource(rp_server_tcp_ext_t *resource)
 {
 }
 
-static void connection_cb(rp_reactor_t *reactor, int status)
+static void ipc_connection_cb(rp_reactor_t *reactor, int status)
 {
     if (status < 0) {
         return;
@@ -54,6 +67,24 @@ static void connection_cb(rp_reactor_t *reactor, int status)
     }
     
     uv_close((uv_handle_t *) client, rp_free_cb);
+}
+
+static void socket_connection_cb(rp_reactor_t *reactor, int status)
+{
+    if (status < 0) {
+        return;
+    }
+
+    rp_stream_t *client = (rp_stream_t*) rp_malloc(sizeof(rp_stream_t));
+    uv_tcp_init(&main_loop, (uv_tcp_t *) client);
+
+    if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
+        fprintf(stderr, "socket accept: %d\n", getpid());
+        reactor->cb.stream.accepted(reactor->server, client, NULL, 0);
+        return;
+    }
+
+    rp_free(client);
 }
 
 static zend_object *create_respond_server_tcp_resource(zend_class_entry *ce)
@@ -105,9 +136,15 @@ PHP_METHOD(respond_server_tcp, __construct)
     reactor = rp_reactors_add(self);
     memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_TCP;
-    reactor->server_init_cb = server_init;
-    reactor->cb.stream.connection = (rp_connection_cb) connection_cb;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;
+
+#ifdef HAVE_REUSEPORT
+    reactor->worker_init_cb = server_init;
+    reactor->cb.stream.connection = (rp_connection_cb) socket_connection_cb;
+#else
+    reactor->server_init_cb = server_init;
+    reactor->cb.stream.connection = (rp_connection_cb) ipc_connection_cb;
+#endif
     resource->reactor = reactor;
 }
 
