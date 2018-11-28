@@ -31,7 +31,6 @@ static void server_init(rp_reactor_t *reactor)
     uv_tcp_init(&main_loop, &reactor->handler.tcp);
     sockfd = socket(reactor->addr.sockaddr.sin_family, SOCK_STREAM, 0);
 
-//    SO_REUSEPORT
 #ifdef HAVE_REUSEPORT
     int status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &(int){ 1 }, sizeof(int));
     fprintf(stderr, "reuse port:%d %d\n", getpid(), status);

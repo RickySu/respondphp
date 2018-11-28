@@ -30,6 +30,8 @@ typedef struct {
 } rp_udp_send_t;
 
 typedef struct {
+    uv_udp_send_t send;
+    zend_string *data;
     uv_pipe_t worker_pipe;
     uv_pipe_t actor_pipe;
     zval promise;

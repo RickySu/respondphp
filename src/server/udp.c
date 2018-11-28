@@ -12,8 +12,9 @@ DECLARE_FUNCTION_ENTRY(respond_server_udp) =
 static zend_object *create_respond_server_udp_resource(zend_class_entry *class_type);
 static void free_respond_server_udp_resource(zend_object *object);
 static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload, rp_stream_t *result_stream);
-static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
-static void data_recv_cb(zend_object *server, rp_reactor_data_send_req_payload_recv_t *recv_req);
+static void worker_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
+static void actor_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr *addr, unsigned flags);
+static void data_actor_recv_cb(zend_object *server, rp_reactor_data_send_req_payload_recv_t *recv_req);
 static void releaseResource(rp_udp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
 static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
@@ -23,9 +24,23 @@ void result_send_cb(uv_write_t* req, int status);
 
 static void server_init(rp_reactor_t *reactor)
 {
+    uv_os_fd_t sockfd;
     uv_udp_init(&main_loop, &reactor->handler.udp);
+    sockfd = socket(reactor->addr.sockaddr.sin_family, SOCK_DGRAM, 0);
+
+#ifdef HAVE_REUSEPORT
+    int status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &(int){ 1 }, sizeof(int));
+    fprintf(stderr, "reuse port:%d %d\n", getpid(), status);
+#endif
+
+    uv_udp_open(&reactor->handler.udp, sockfd);
     uv_udp_bind(&reactor->handler.udp, (const struct sockaddr*) &reactor->addr, 0);
     uv_udp_recv_start(&reactor->handler.udp, rp_alloc_buffer, reactor->cb.dgram.recv);
+
+    uint16_t port;
+    char addr_str[INET6_ADDRSTRLEN];
+    sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
+    fprintf(stderr, "udp listen: %s:%d\n", addr_str, port);
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_server_udp)
@@ -47,34 +62,23 @@ void result_send_cb(uv_write_t* req, int status)
     rp_free(req);
 }
 
-static void udp_send_cb(rp_udp_send_t *udp_send, int status)
-{
-    rp_write_req_t *req;
-    rp_reactor_data_send_req_t *send_req = FETCH_POINTER(udp_send->payload, rp_reactor_data_send_req_t, payload);
-    rp_reactor_ext_t *reactor_ext = FETCH_POINTER(send_req, rp_reactor_ext_t, data);
-    fprintf(stderr, "send status: %p %p %d %d\n", send_req, reactor_ext, udp_send->payload->sender, status);
-    req = rp_make_write_req((char *) &status, sizeof(status));
-    uv_write(req, udp_send->result_stream, &req->buf, 1, (uv_write_cb) result_send_cb);
-    rp_free(reactor_ext);
-    rp_free(udp_send);
-}
-
 static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload, rp_stream_t *result_stream)
 {
-    char addr_str[INET6_ADDRSTRLEN];
-    uint16_t port;
     rp_udp_send_t *udp_send;
     udp_send = rp_malloc(sizeof(rp_udp_send_t));
     udp_send->buf.base = payload->data;
     udp_send->buf.len = payload->data_len;
     udp_send->payload = payload;
     udp_send->result_stream = result_stream;
-    sock_addr(&payload->addr, addr_str, INET6_ADDRSTRLEN, &port);
     int ret = uv_udp_send(udp_send, &reactor->handler, &udp_send->buf, 1, &payload->addr, udp_send_cb);
+
+    char addr_str[INET6_ADDRSTRLEN];
+    uint16_t port;
+    sock_addr(&payload->addr, addr_str, INET6_ADDRSTRLEN, &port);
     fprintf(stderr, "req send start %d (%d) %s %p %.*s %s\n", payload->sender, ret, uv_strerror(ret), udp_send, udp_send->buf.len, udp_send->buf.base, addr_str);
 }
 
-static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
+static void actor_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
 {
     size_t sockaddr_size;
 
@@ -102,7 +106,32 @@ static void recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, c
     rp_free(buf->base);
 }
 
-static void data_recv_cb(zend_object *server, rp_reactor_data_send_req_payload_recv_t *recv_req)
+static void worker_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
+{
+    size_t sockaddr_size;
+    rp_reactor_data_send_req_payload_recv_t *recv;
+
+    if (nread > 0) {
+        if(addr->sa_family == AF_INET) {
+            sockaddr_size = sizeof(struct sockaddr_in);
+        }
+        else {
+            sockaddr_size = sizeof(struct sockaddr_in6);
+        }
+
+        recv = rp_malloc(sizeof(rp_reactor_data_send_req_payload_recv_t));
+        recv->flags = flags;
+        memcpy(&recv->addr, addr, sockaddr_size);
+        recv->data_len = nread;
+        memcpy(&recv->data, buf->base, nread);
+        fprintf(stderr, "recv data: %.*s\n", recv->data_len, &recv->data);
+        reactor->cb.dgram.data_recv(reactor->server, recv);
+        rp_free(recv);
+    }
+    rp_free(buf->base);
+}
+
+static void data_actor_recv_cb(zend_object *server, rp_reactor_data_send_req_payload_recv_t *recv_req)
 {
     rp_udp_ext_t *resource = FETCH_RESOURCE(server, rp_udp_ext_t);
     char addr_str[40];
@@ -166,10 +195,17 @@ PHP_METHOD(respond_server_udp, __construct)
     reactor = rp_reactors_add(self);
     memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_UDP;
+
+#ifdef HAVE_REUSEPORT
+    reactor->worker_init_cb = server_init;
+    reactor->cb.dgram.recv = (rp_recv_cb) worker_recv_cb;
+#else
     reactor->server_init_cb = server_init;
-    reactor->cb.dgram.recv = (rp_recv_cb) recv_cb;
+    reactor->cb.dgram.recv = (rp_recv_cb) actor_recv_cb;
+#endif
+
     reactor->cb.dgram.send = (rp_send_cb) send_cb;
-    reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_recv_cb;
+    reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_actor_recv_cb;
     resource->reactor = reactor;
 }
 
@@ -218,6 +254,55 @@ static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, con
     rp_free(buf->base);
 }
 
+#ifdef HAVE_REUSEPORT
+
+static void udp_send_cb(rp_udp_send_t *udp_send, int status)
+{
+    rp_udp_send_resul_t *result = (rp_udp_send_resul_t *) udp_send;
+    zval send_result;
+    fprintf(stderr, "result %p %d\n", result, getpid());
+
+    if(status > 0){
+        ZVAL_LONG(&send_result, status);
+        rp_resolve_promise(&result->promise, &send_result);
+    }
+    else{
+        rp_reject_promise_long(&result->promise, status);
+    }
+
+    ZVAL_PTR_DTOR(&result->promise);
+    zend_string_release(result->data);
+    rp_free(result);
+}
+
+static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
+{
+    rp_udp_send_resul_t *result;
+    uv_buf_t buf;
+    result = emalloc(sizeof(rp_udp_send_resul_t));
+    rp_make_promise_object(&result->promise);
+    result->data = data;
+    buf.base = data->val;
+    buf.len = data->len;
+    zend_string_addref(data);
+    int ret = uv_udp_send(&result->send, &reactor->handler, &buf, 1, addr, udp_send_cb);
+    return result;
+}
+
+#else
+
+static void udp_send_cb(rp_udp_send_t *udp_send, int status)
+{
+    rp_write_req_t *req;
+    rp_reactor_data_send_req_t *send_req = FETCH_POINTER(udp_send->payload, rp_reactor_data_send_req_t, payload);
+    rp_reactor_ext_t *reactor_ext = FETCH_POINTER(send_req, rp_reactor_ext_t, data);
+    fprintf(stderr, "send status: %p %p %d %d\n", send_req, reactor_ext, udp_send->payload->sender, status);
+    req = rp_make_write_req((char *) &status, sizeof(status));
+    uv_write(req, udp_send->result_stream, &req->buf, 1, (uv_write_cb) result_send_cb);
+    rp_free(reactor_ext);
+    rp_free(udp_send);
+}
+
 static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
 {
     int fd[2];
@@ -250,6 +335,8 @@ static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *da
     rp_free(req);
     return result;
 }
+
+#endif
 
 PHP_METHOD(respond_server_udp, close)
 {
