@@ -19,7 +19,9 @@ static void releaseResource(rp_udp_ext_t *resource);
 static void server_init(rp_reactor_t *reactor);
 static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
 static void udp_send_cb(rp_udp_send_t *udp_send, int status);
-static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf);
+static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
+static void ipc_udp_send_cb(rp_udp_send_t *udp_send, int status);
+static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf);
 void result_send_cb(uv_write_t* req, int status);
 
 static void server_init(rp_reactor_t *reactor)
@@ -34,7 +36,11 @@ static void server_init(rp_reactor_t *reactor)
 #endif
 
     uv_udp_open(&reactor->handler.udp, sockfd);
-    uv_udp_bind(&reactor->handler.udp, (const struct sockaddr*) &reactor->addr, 0);
+
+    if(reactor->addr.sockaddr.sin_family != AF_UNSPEC) {
+        uv_udp_bind(&reactor->handler.udp, (const struct sockaddr *) &reactor->addr, 0);
+    }
+
     uv_udp_recv_start(&reactor->handler.udp, rp_alloc_buffer, reactor->cb.dgram.recv);
 
     uint16_t port;
@@ -64,13 +70,20 @@ void result_send_cb(uv_write_t* req, int status)
 
 static void send_cb(rp_reactor_t *reactor, rp_reactor_data_send_req_payload_send_t *payload, rp_stream_t *result_stream)
 {
+    int ret;
     rp_udp_send_t *udp_send;
     udp_send = rp_malloc(sizeof(rp_udp_send_t));
     udp_send->buf.base = payload->data;
     udp_send->buf.len = payload->data_len;
     udp_send->payload = payload;
     udp_send->result_stream = result_stream;
-    int ret = uv_udp_send(udp_send, &reactor->handler, &udp_send->buf, 1, &payload->addr, udp_send_cb);
+
+
+#ifdef HAVE_REUSEPORT
+    ret = uv_udp_send(udp_send, &reactor->handler, &udp_send->buf, 1, &payload->addr, udp_send_cb);
+#else
+    ret = uv_udp_send(udp_send, &reactor->handler, &udp_send->buf, 1, &payload->addr, ipc_udp_send_cb);
+#endif
 
     char addr_str[INET6_ADDRSTRLEN];
     uint16_t port;
@@ -172,28 +185,31 @@ PHP_METHOD(respond_server_udp, __construct)
 {
     long port;
     zval *self = getThis();
-    zend_string *host;
+    zend_string *host = NULL;
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|Sl", &host, &port)) {
         return;
     }
 
-    if(memchr(host->val, ':', host->len) == NULL) {
-        if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
-            return;
+    if(host != NULL) {
+        if (memchr(host->val, ':', host->len) == NULL) {
+            if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
+                return;
+            }
+        } else {
+            if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
+                return;
+            }
         }
+        reactor = rp_reactors_add(self);
+        memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     }
-    else {
-        if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
-            return;
-        }
+    else{
+        reactor = rp_reactors_add(self);
     }
-
-    reactor = rp_reactors_add(self);
-    memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_UDP;
 
 #ifdef HAVE_REUSEPORT
@@ -234,11 +250,16 @@ PHP_METHOD(respond_server_udp, send)
         }
     }
 
+#if HAVE_REUSEPORT
     result = udp_send_data(resource->reactor, data, &addr);
+#else
+    result = ipc_udp_send_data(resource->reactor, data, &addr);
+#endif
+
     RETVAL_ZVAL(&result->promise, 1, 0);
 }
 
-static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf)
+static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf)
 {
     zval send_result;
     fprintf(stderr, "result %p\n", result);
@@ -253,8 +274,6 @@ static void udp_send_result_receive(rp_udp_send_resul_t *result, int status, con
     uv_close((uv_handle_t *) &result->worker_pipe, (uv_close_cb) rp_free_cb);
     rp_free(buf->base);
 }
-
-#ifdef HAVE_REUSEPORT
 
 static void udp_send_cb(rp_udp_send_t *udp_send, int status)
 {
@@ -289,9 +308,7 @@ static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *da
     return result;
 }
 
-#else
-
-static void udp_send_cb(rp_udp_send_t *udp_send, int status)
+static void ipc_udp_send_cb(rp_udp_send_t *udp_send, int status)
 {
     rp_write_req_t *req;
     rp_reactor_data_send_req_t *send_req = FETCH_POINTER(udp_send->payload, rp_reactor_data_send_req_t, payload);
@@ -303,7 +320,7 @@ static void udp_send_cb(rp_udp_send_t *udp_send, int status)
     rp_free(udp_send);
 }
 
-static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
+static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr)
 {
     int fd[2];
     rp_udp_send_resul_t *result;
@@ -328,15 +345,13 @@ static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *da
     uv_pipe_init(&main_loop, &result->worker_pipe, 0);
     uv_pipe_open(&result->worker_pipe, fd[1]);
     fprintf(stderr, "read start: %d\n", getpid());
-    uv_read_start(&result->worker_pipe, rp_alloc_buffer, (uv_read_cb) udp_send_result_receive);
+    uv_read_start(&result->worker_pipe, rp_alloc_buffer, (uv_read_cb) ipc_udp_send_result_receive);
 
     rp_reactor_ipc_send_ex(reactor, (uv_stream_t *) &result->actor_pipe, NULL, req, size_of_req_data, &ipc_pipe);
     fprintf(stderr, "pipe socket send: %p %p %d\n", reactor, result, getpid());
     rp_free(req);
     return result;
 }
-
-#endif
 
 PHP_METHOD(respond_server_udp, close)
 {
