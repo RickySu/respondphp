@@ -132,7 +132,7 @@ PHP_METHOD(respond_server_routine, __construct)
         return;
     }
 
-    reactor = rp_reactors_add(self);
+    reactor = rp_reactors_add_new(self);
     reactor->type = RP_ROUTINE;
     reactor->cb.stream.accepted = accepted_cb;
     resource->reactor = reactor;

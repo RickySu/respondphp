@@ -204,11 +204,11 @@ PHP_METHOD(respond_server_udp, __construct)
                 return;
             }
         }
-        reactor = rp_reactors_add(self);
+        reactor = rp_reactors_add_new(self);
         memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     }
     else{
-        reactor = rp_reactors_add(self);
+        reactor = rp_reactors_add_new(self);
     }
     reactor->type = RP_UDP;
 

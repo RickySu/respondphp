@@ -132,7 +132,7 @@ PHP_METHOD(respond_server_tcp, __construct)
 
     fprintf(stderr, "tcp:%p\n", &resource->event_hook);
 
-    reactor = rp_reactors_add(self);
+    reactor = rp_reactors_add_new(self);
     memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     reactor->type = RP_TCP;
     reactor->cb.stream.accepted = (rp_accepted_cb) accepted_cb;

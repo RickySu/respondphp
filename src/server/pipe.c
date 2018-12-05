@@ -90,7 +90,7 @@ PHP_METHOD(respond_server_pipe, __construct)
     fprintf(stderr, "pipe:%p\n", &resource->event_hook);
 
     zend_string_addref(socket_path);
-    reactor = rp_reactors_add(self);
+    reactor = rp_reactors_add_new(self);
     reactor->addr.socket_path = socket_path;
     reactor->type = RP_PIPE;
     reactor->server_init_cb = server_init;

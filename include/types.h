@@ -15,7 +15,7 @@ struct rp_reactor_data_send_req_payload_recv_s;
 typedef enum {ACTOR, WORKER_MANAGER, WORKER, ROUTINE_MANAGER, ROUTINE} rp_task_type_t;
 typedef enum {RP_TCP, RP_PIPE, RP_UDP, RP_ROUTINE} rp_reactor_type_t;
 typedef enum {RP_RECV, RP_SEND} rp_reactor_data_send_type_t;
-typedef void (*rp_init_cb)(struct rp_reactor_s *reactor);
+typedef void (*rp_reactor_cb)(struct rp_reactor_s *reactor);
 typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, struct rp_reactor_data_send_req_payload_send_s *send_req, struct rp_stream_s *result_stream);
 typedef void (*rp_data_recv_cb)(zend_object *server, struct rp_reactor_data_send_req_payload_recv_s *recv_req);
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
@@ -55,17 +55,17 @@ typedef struct {
 typedef union {
     rp_stream_cb_t         stream;
     rp_dgram_cb_t          dgram;
-} rp_reactor_cb_t;
+} rp_reactor_socket_cb_t;
 
 typedef struct rp_reactor_s {
     rp_reactor_handler_t   handler;
     rp_reactor_type_t      type;
     rp_reactor_addr_t      addr;
-    rp_reactor_cb_t        cb;
-    rp_init_cb             server_init_cb;
-    rp_init_cb             worker_init_cb;
+    rp_reactor_socket_cb_t        cb;
+    rp_reactor_cb          reactor_free_cb;
+    rp_reactor_cb          server_init_cb;
+    rp_reactor_cb          worker_init_cb;
     zend_object            *server;
-    struct rp_reactor_s    *next;
 } rp_reactor_t;
 
 typedef struct {

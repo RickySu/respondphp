@@ -15,9 +15,10 @@ static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *
 static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor);
 static void rp_signal_hup_handler(uv_signal_t* signal, int signum);
-static void reactor_free(zval *reactor_p);
+static void reactors_destroy(zval *reactor_p);
 static void reactor_async_init_free(zval *data);
 static void rp_reactor_actor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
+static void reactor_free(rp_reactor_t *reactor);
 
 static rp_stream_t *rp_accept_client(uv_pipe_t *pipe, rp_reactor_t *reactor)
 {
@@ -134,11 +135,22 @@ static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t 
     }
 }
 
-static void reactor_free(zval *reactor_p)
+static void reactor_free(rp_reactor_t *reactor)
+{
+    rp_free(reactor);
+}
+
+static void reactors_destroy(zval *reactor_p)
 {
     rp_reactor_t *reactor = Z_PTR_P(reactor_p);
-    zend_object_ptr_dtor(reactor->server);
-    rp_free(reactor);
+
+    if(reactor->server){
+        zend_object_ptr_dtor(reactor->server);
+    }
+
+    if(reactor->reactor_free_cb){
+        reactor->reactor_free_cb(reactor);
+    }
 }
 
 static void reactor_async_init_free(zval *data)
@@ -259,7 +271,7 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
 
 void rp_reactors_init()
 {
-    zend_hash_init(&rp_reactors, 10, NULL, reactor_free, 0);
+    zend_hash_init(&rp_reactors, 10, NULL, reactors_destroy, 0);
     zend_hash_init(&rp_reactors_async_inits, 10, NULL, reactor_async_init_free, 0);
 }
 
@@ -269,9 +281,16 @@ void rp_reactors_destroy()
     zend_hash_destroy(&rp_reactors_async_inits);
 }
 
-rp_reactor_t *rp_reactors_add(zval *server)
+rp_reactor_t *rp_reactor_init(rp_reactor_t *reactor)
 {
-    rp_reactor_t *reactor = rp_calloc(1, sizeof(rp_reactor_t));
+    memset(reactor, 0, sizeof(rp_reactor_t));
+}
+
+rp_reactor_t *rp_reactors_add_new(zval *server)
+{
+    rp_reactor_t *reactor = rp_malloc(sizeof(rp_reactor_t));
+    rp_reactor_init(reactor);
+    reactor->reactor_free_cb = reactor_free;
     zend_hash_next_index_insert_ptr(&rp_reactors, reactor);
     Z_ADDREF_P(server);
     reactor->server = Z_OBJ_P(server);
