@@ -295,6 +295,10 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
         case SSL_ERROR_WANT_WRITE:
             fprintf(stderr, "ssl want write:%d\n", err);
             break;
+        case SSL_ERROR_SSL:
+            fprintf(stderr, "ssl error ssl:%d\n", err);
+            connection_secure_resource->connection->connection_methods.close(connection_secure_resource->connection);
+            break;
         default:
             fprintf(stderr, "ssl error:%d\n", err);
             break;
