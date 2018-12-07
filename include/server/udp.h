@@ -1,6 +1,7 @@
 #ifndef _RP_SERVER_UDP_H
 #define _RP_SERVER_UDP_H
 #include "internal/event_emitter.h"
+#define RP_UDP_SERVER_WORKER_MODE 1
 
 CLASS_ENTRY_FUNCTION_D(respond_server_udp);
 

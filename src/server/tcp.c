@@ -124,15 +124,9 @@ PHP_METHOD(respond_server_tcp, __construct)
     }
 
     fprintf(stderr, "host: %s %ld\n", host->val, port);
-    if(memchr(host->val, ':', host->len) == NULL) {
-        if ((ret = uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr)) != 0) {
-            return;
-        }
-    }
-    else {
-        if ((ret = uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6)) != 0) {
-            return;
-        }
+
+    if(!rp_addr(&addr, host, port & 0xffff)){
+        return;
     }
 
     fprintf(stderr, "tcp:%p\n", &resource->event_hook);

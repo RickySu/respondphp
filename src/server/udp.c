@@ -22,7 +22,9 @@ static void udp_send_cb(rp_udp_send_t *udp_send, int status);
 static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
 static void ipc_udp_send_cb(rp_udp_send_t *udp_send, int status);
 static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf);
-void result_send_cb(uv_write_t* req, int status);
+static void actor_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port);
+static void worker_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port);
+static void result_send_cb(uv_write_t* req, int status);
 
 static void server_init(rp_reactor_t *reactor)
 {
@@ -62,7 +64,7 @@ static void releaseResource(rp_udp_ext_t *resource)
 {
 }
 
-void result_send_cb(uv_write_t* req, int status)
+static void result_send_cb(uv_write_t* req, int status)
 {
     uv_close(req->handle, rp_free_cb);
     rp_free(req);
@@ -181,34 +183,17 @@ static void free_respond_server_udp_resource(zend_object *object)
     zend_object_std_dtor(object);
 }
 
-PHP_METHOD(respond_server_udp, __construct)
+static void actor_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port)
 {
-    long port = -1;
-    zval *self = getThis();
-    zend_string *host = NULL;
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
-    rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
-
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|lS", &port, &host)) {
-        return;
-    }
-
+    fprintf(stderr, "udp actor mode\n");
     if(port != -1) {
 
-        if(host == NULL) {
-            host = zend_string_init("::", 2, 1);
+        if(!rp_addr(&addr, host, port & 0xffff)){
+            return;
         }
 
-        if (memchr(host->val, ':', host->len) == NULL) {
-            if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
-                return;
-            }
-        } else {
-            if (uv_ip6_addr(host->val, port & 0xffff, &addr.sockaddr6) != 0) {
-                return;
-            }
-        }
         reactor = rp_reactors_add_new(self);
         memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
     }
@@ -228,6 +213,52 @@ PHP_METHOD(respond_server_udp, __construct)
     reactor->cb.dgram.send = (rp_send_cb) send_cb;
     reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_actor_recv_cb;
     resource->reactor = reactor;
+}
+
+static void worker_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port)
+{
+    rp_reactor_addr_t addr;
+    rp_reactor_t *reactor = rp_malloc(sizeof(rp_reactor_t));
+    rp_reactor_init(reactor);
+    fprintf(stderr, "udp worker mode\n");
+    if(port != -1) {
+
+        if(!rp_addr(&addr, host, port & 0xffff)){
+            rp_free(reactor);
+            return;
+        }
+
+        memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
+    }
+
+    Z_ADDREF_P(self);
+    reactor->server = Z_OBJ_P(self);
+
+    reactor->type = RP_UDP;
+    reactor->worker_init_cb = server_init;
+    reactor->cb.dgram.recv = (rp_recv_cb) worker_recv_cb;
+    reactor->cb.dgram.send = (rp_send_cb) send_cb;
+    reactor->cb.dgram.data_recv = (rp_data_recv_cb) data_actor_recv_cb;
+    resource->reactor = reactor;
+    resource->flag |= RP_UDP_SERVER_WORKER_MODE;
+    server_init(reactor);
+}
+
+PHP_METHOD(respond_server_udp, __construct)
+{
+    long port = -1;
+    zend_string *host = NULL;
+
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|lS", &port, &host)) {
+        return;
+    }
+
+    if(rp_get_task_type() == ACTOR){
+        actor_udp_init(FETCH_OBJECT_RESOURCE(getThis(), rp_udp_ext_t), getThis(), host, port);
+        return;
+    }
+
+    worker_udp_init(FETCH_OBJECT_RESOURCE(getThis(), rp_udp_ext_t), getThis(), host, port);
 }
 
 PHP_METHOD(respond_server_udp, send)
@@ -358,10 +389,22 @@ static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string
     return result;
 }
 
+static void udp_close_cb(rp_reactor_t *reactor)
+{
+    fprintf(stderr, "close cb\n");
+    zend_object_ptr_dtor(reactor->server);
+    rp_free(reactor);
+    fprintf(stderr, "close cb done\n");
+}
+
 PHP_METHOD(respond_server_udp, close)
 {
-//    zval *self = getThis();
-//    rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
+    zval *self = getThis();
+    rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
+    if(resource->flag & RP_UDP_SERVER_WORKER_MODE){
+        uv_close(&resource->reactor->handler, (uv_close_cb) udp_close_cb);
+    }
+    fprintf(stderr, "close done\n");
 }
 
 PHP_METHOD(respond_server_udp, on)

@@ -166,7 +166,26 @@ static zend_always_inline void rp_make_promise_object(zval *promise)
     rp_make_promise_object_ex(promise, rp_promise_ce);
 }
 
-zend_always_inline static void rp_reject_promise_long(zval *promise, int err)
+static zend_always_inline zend_bool rp_addr(rp_reactor_addr_t *addr, zend_string *host, int16_t port)
+{
+    if(host == NULL) {
+        host = zend_string_init("::", 2, 1);
+    }
+
+    if (memchr(host->val, ':', host->len) == NULL) {
+        if (uv_ip4_addr(host->val, port, &addr->sockaddr) != 0) {
+            return 0;
+        }
+    }
+    else {
+        if (uv_ip6_addr(host->val, port, &addr->sockaddr6) != 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static zend_always_inline void rp_reject_promise_long(zval *promise, int err)
 {
     zval exception, reason;
     ZVAL_LONG(&reason, err);
