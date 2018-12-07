@@ -110,15 +110,20 @@ PHP_METHOD(respond_server_tcp, __construct)
 {
     long ret, port;
     zval *self = getThis();
-    zend_string *host;
+    zend_string *host = NULL;
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
     rp_server_tcp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_server_tcp_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &host, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "l|S", &port, &host)) {
         return;
     }
 
+    if(host == NULL) {
+        host = zend_string_init("::", 2, 1);
+    }
+
+    fprintf(stderr, "host: %s %ld\n", host->val, port);
     if(memchr(host->val, ':', host->len) == NULL) {
         if ((ret = uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr)) != 0) {
             return;

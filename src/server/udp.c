@@ -183,18 +183,23 @@ static void free_respond_server_udp_resource(zend_object *object)
 
 PHP_METHOD(respond_server_udp, __construct)
 {
-    long port;
+    long port = -1;
     zval *self = getThis();
     zend_string *host = NULL;
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
     rp_udp_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_udp_ext_t);
 
-    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|Sl", &host, &port)) {
+    if (FAILURE == zend_parse_parameters(ZEND_NUM_ARGS(), "|lS", &port, &host)) {
         return;
     }
 
-    if(host != NULL) {
+    if(port != -1) {
+
+        if(host == NULL) {
+            host = zend_string_init("::", 2, 1);
+        }
+
         if (memchr(host->val, ':', host->len) == NULL) {
             if (uv_ip4_addr(host->val, port & 0xffff, &addr.sockaddr) != 0) {
                 return;
