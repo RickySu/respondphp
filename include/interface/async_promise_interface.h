@@ -2,19 +2,19 @@
 #define _RP_ASYNC_PROMISE_INTERFACE_H
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_async_promise_interface_then(ce) \
-RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(ARGINFO(ce, then), 0, 0, "Respond\\Async\\PromiseInterface", 0) \
-    ZEND_ARG_TYPE_INFO(0, onFullfiled, IS_CALLABLE, 1) \ 
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(ARGINFO(ce, then), 0, 0, Respond\\Async\\PromiseInterface, 0) \
+    ZEND_ARG_TYPE_INFO(0, onFullfiled, IS_CALLABLE, 1) \
     ZEND_ARG_TYPE_INFO(0, onRejcted, IS_CALLABLE, 1) \
     ZEND_ARG_TYPE_INFO(0, onFinaled, IS_CALLABLE, 1) \
 ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_async_promise_interface_catch(ce) \
-RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(ce, catch), "Respond\\Async\\PromiseInterface", 0) \
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(ce, catch), Respond\\Async\\PromiseInterface, 0) \
     ZEND_ARG_TYPE_INFO(0, onRejcted, IS_CALLABLE, 0) \
 ZEND_END_ARG_INFO()
 
 #define TRAIT_FUNCTION_ARG_INFO_respond_async_promise_interface_finally(ce) \
-RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(ce, finally), "Respond\\Async\\PromiseInterface", 0) \
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(ce, finally), Respond\\Async\\PromiseInterface, 0) \
     ZEND_ARG_TYPE_INFO(0, onFinal, IS_CALLABLE, 0) \
 ZEND_END_ARG_INFO()
 

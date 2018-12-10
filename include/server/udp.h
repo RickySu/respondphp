@@ -10,7 +10,7 @@ ZEND_BEGIN_ARG_INFO(ARGINFO(respond_server_udp, __construct), 0)
     ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_server_udp, send), "Respond\\Async\\PromiseInterface", 0)
+RP_BEGIN_ARG_WITH_RETURN_OBJ_INFO(ARGINFO(respond_server_udp, send), Respond\\Async\\PromiseInterface, 0)
     ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
     ZEND_ARG_TYPE_INFO(0, port, IS_LONG, 0)
     ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
