@@ -14,7 +14,6 @@ typedef struct {
 
 ZEND_BEGIN_ARG_INFO(ARGINFO(respond_event_loop, run), 0)
     ZEND_ARG_INFO(0, option)
-    ZEND_ARG_CALLABLE_INFO(0, callback, 1)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(respond_event_loop, run);
