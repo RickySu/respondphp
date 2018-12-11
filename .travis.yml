@@ -26,3 +26,4 @@ script:
     -     ./configure --with-openssl --enable-debug-respondphp
     -     make clean all
     -     NO_INTERACTION=1 make test
+    -     phpunit --bootstrap phpsrc/tests/bootstrap.php phpsrc/tests

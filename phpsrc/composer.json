@@ -18,7 +18,15 @@
       "psr-4": {
         "Respond\\Tests\\": "tests/",
         "Respond\\Pack\\": "pack/"
-      }
+      },
+      "files": [
+          "srctest/ConnectorInterface.php",
+          "srctest/EventEmitterInterface.php",
+          "srctest/PromiseInterface.php",
+          "srctest/ReadableStreamInterface.php",
+          "srctest/WritableStreamInterface.php",
+          "srctest/ConnectionInterface.php"
+      ]
     },
     "require": {
         "symfony/filesystem": "^4.1",

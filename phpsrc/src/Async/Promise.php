@@ -39,7 +39,7 @@ class Promise implements PromiseInterface
         if($onFullfilled !== null){
             $this->onFullfilled = $onFullfilled;
         }
-        if($onRejected !== $onRejected){
+        if($onRejected !== null){
             $this->onRejected = $onRejected;
         }
         if($onFinaled !== null){
