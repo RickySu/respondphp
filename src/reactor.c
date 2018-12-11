@@ -271,6 +271,7 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
 
 void rp_reactors_init()
 {
+    actor_pid = getpid();
     zend_hash_init(&rp_reactors, 10, NULL, reactors_destroy, 0);
     zend_hash_init(&rp_reactors_async_inits, 10, NULL, reactor_async_init_free, 0);
 }

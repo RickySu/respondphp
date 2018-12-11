@@ -48,6 +48,7 @@ extern uv_pipe_t data_pipe;
 extern uv_pipe_t routine_pipe;
 extern zend_class_entry *rp_promise_ce;
 extern zend_module_entry respondphp_module_entry;
+extern pid_t actor_pid;
 
 #define main_loop_inited() (main_loop.data == &main_loop)
 

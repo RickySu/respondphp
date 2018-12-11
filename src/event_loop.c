@@ -6,7 +6,7 @@ DECLARE_FUNCTION_ENTRY(respond_event_loop) =
     PHP_ME(respond_event_loop, create, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(respond_event_loop, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(respond_event_loop, run, ARGINFO(respond_event_loop, run), ZEND_ACC_PUBLIC)
-    PHP_ME(respond_event_loop, stop, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(respond_event_loop, end, NULL, ZEND_ACC_PUBLIC)
     PHP_ME(respond_event_loop, alive, NULL, ZEND_ACC_PUBLIC)
     PHP_FE_END
 };
@@ -83,9 +83,9 @@ PHP_METHOD(respond_event_loop, run)
     uv_run(&main_loop, mode);
 }
 
-PHP_METHOD(respond_event_loop, stop)
+PHP_METHOD(respond_event_loop, end)
 {
-    uv_stop(&main_loop);
+    kill(actor_pid, SIGINT);
 }
 
 PHP_METHOD(respond_event_loop, alive)

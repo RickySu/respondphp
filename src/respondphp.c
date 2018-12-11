@@ -1,11 +1,12 @@
 #include "respondphp.h"
 #include "version.h"
+static rp_task_type_t rp_task_type = ACTOR;
 
 uv_loop_t main_loop = {.data = NULL};
+pid_t actor_pid;
 uv_pipe_t ipc_pipe;
 uv_pipe_t data_pipe;
 uv_pipe_t routine_pipe;
-static rp_task_type_t rp_task_type = ACTOR;
 zend_class_entry *rp_promise_ce = NULL;
 
 static void declare_interfaces()

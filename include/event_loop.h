@@ -17,7 +17,7 @@ ZEND_BEGIN_ARG_INFO(ARGINFO(respond_event_loop, run), 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(respond_event_loop, run);
-PHP_METHOD(respond_event_loop, stop);
+PHP_METHOD(respond_event_loop, end);
 PHP_METHOD(respond_event_loop, alive);
 PHP_METHOD(respond_event_loop, __construct);
 PHP_METHOD(respond_event_loop, create);
