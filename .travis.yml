@@ -2,8 +2,6 @@ dist:     xenial
 
 addons:
     apt:
-        sources:
-            -     ppa:ondrej/apache2
         packages:
             -     libuv1-dev
             -     libssl-dev
@@ -12,7 +10,6 @@ addons:
 language: php
 
 php:
-    -     7.0
     -     7.1
     -     7.2
 
@@ -22,6 +19,9 @@ compiler:
 sudo:     required
 
 before_script:
+    -     sudo add-apt-repository ppa:ondrej/apache2 -y
+    -     sudo apt update
+    -     sudo apt upgrade libuv1-dev libssl-dev openssl -y
     -     git submodule update --init
 
 script:
