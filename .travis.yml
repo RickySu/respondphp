@@ -19,9 +19,6 @@ compiler:
 sudo:     required
 
 before_script:
-    -     sudo add-apt-repository ppa:ondrej/apache2 -y
-    -     sudo apt update
-    -     sudo apt upgrade libuv1-dev libssl-dev openssl -y
     -     git submodule update --init
 
 script:
