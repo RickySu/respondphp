@@ -1,6 +1,15 @@
-language: php
-
 dist:     xenial
+
+addons:
+    apt:
+        sources:
+            -     ppa:ondrej/apache2
+        packages:
+            -     libuv1-dev
+            -     libssl-dev
+            -     openssl
+
+language: php
 
 php:
     -     7.0
@@ -16,7 +25,6 @@ before_script:
     -     git submodule update --init
 
 script:
-    -     sudo apt -y install libuv1-dev libssl-dev openssl
     -     phpize
     -     ./configure --with-openssl --enable-debug-respondphp
     -     make clean all
