@@ -60,12 +60,11 @@ static void on_addrinfo_resolved(rp_resolver_into_t *info, int status, struct ad
                 add_next_index_string(&v6result, addr_str);
                 break;
         }
-        fprintf(stderr, "res %p resolve: %s %s\n", res, addr_str, res->ai_canonname);
         res = res->ai_next;
     }
 
-    add_assoc_zval(&result, "v4", &v4result);
-    add_assoc_zval(&result, "v6", &v6result);
+    add_assoc_zval(&result, "IPv4", &v4result);
+    add_assoc_zval(&result, "IPv6", &v6result);
     rp_resolve_promise(&info->promise, &result);
     ZVAL_PTR_DTOR(&info->promise);
     ZVAL_PTR_DTOR(&result);
