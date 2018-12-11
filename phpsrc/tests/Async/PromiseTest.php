@@ -1,10 +1,11 @@
 <?php
 namespace Respond\Tests\Promise;
 
+use PHPUnit\Framework\TestCase;
 use Respond\Async\Promise;
 use Respond\Async\PromiseInterface;
 
-class PromiseTest extends \PHPUnit_Framework_TestCase
+class PromiseTest extends TestCase
 {
     private $resolve;
     private $reject;

@@ -2,10 +2,11 @@
 namespace Respond\Tests\Event;
 
 
+use PHPUnit\Framework\TestCase;
 use Respond\Event\EventEmitter;
 use Respond\Event\EventEmitterInterface;
 
-class EventEmitterTest extends \PHPUnit_Framework_TestCase
+class EventEmitterTest extends TestCase
 {
     public function test_interface()
     {

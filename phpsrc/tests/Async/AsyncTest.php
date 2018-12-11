@@ -1,10 +1,11 @@
 <?php
 namespace Respond\Tests\Promise;
 
+use PHPUnit\Framework\TestCase;
 use function Respond\Async\async;
 use Respond\Async\Promise;
 
-class AsyncTest extends \PHPUnit_Framework_TestCase
+class AsyncTest extends TestCase
 {
     public function test_AsyncWait()
     {
