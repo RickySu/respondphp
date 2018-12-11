@@ -26,4 +26,5 @@ script:
     -     ./configure --with-openssl --enable-debug-respondphp
     -     make clean all
     -     NO_INTERACTION=1 make test
-    -     phpsrc/vendor/bin/phpunit --bootstrap phpsrc/tests/bootstrap.php phpsrc/tests
+    -     php thirdparty/composer.phar -dphpsrc install
+    -     php phpsrc/vendor/bin/phpunit --bootstrap phpsrc/tests/bootstrap.php phpsrc/tests

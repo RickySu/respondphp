@@ -8,7 +8,7 @@ $promise
         echo "time out 0\n";
     })
     ->catch(function($error){
-        print_r($error);
+        echo "time out 0 canceled\n";
     })
 ;
 
@@ -36,4 +36,5 @@ Respond\Event\Loop::create()->run();
 
 --EXPECT--
 time out 2
+time out 0 canceled
 time out 1
