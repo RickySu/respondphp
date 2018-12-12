@@ -28,6 +28,7 @@ typedef struct {
     uv_pipe_t pipe;
     zend_ulong index;
     zval promise;
+    zval args;
     rp_routine_ext_t *resource;
 } routine_execution_t;
 

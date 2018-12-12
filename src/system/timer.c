@@ -78,5 +78,5 @@ PHP_METHOD(respond_system_timer, timeout)
     }
 
     timer->milliseconds = milliseconds;
-    rp_reactor_async_init((rp_reactor_async_init_cb) timer_async_cb, timer);
+    rp_reactor_async_init((rp_reactor_async_cb) timer_async_cb, timer);
 }

@@ -17,7 +17,8 @@ typedef struct {
 } reactor_data_send_req_t;
 
 typedef struct {
-    rp_reactor_async_init_cb callback;
+    rp_reactor_async_cb init_callback;
+    rp_reactor_async_cb free_callback;
     void *data
 } async_init_t;
 

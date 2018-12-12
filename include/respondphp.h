@@ -100,8 +100,11 @@ void rp_stream_connection_factory(rp_stream_t *client, zval *connection);
 void rp_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_alloc_buffer_zend_string(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
 void rp_free_cb(void *data);
-void rp_reactor_async_init(rp_reactor_async_init_cb callback, void *data);
+void rp_reactor_async_init_ex(rp_reactor_async_cb init_callback, rp_reactor_async_cb free_callback, void *data);
 void rp_reactor_async_init_execute();
+void rp_reactor_async_free_execute();
+
+#define rp_reactor_async_init(init_callback, data) rp_reactor_async_init_ex(init_callback, NULL, data)
 
 #ifdef HAVE_OPENSSL
 void rp_stream_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);

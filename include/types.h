@@ -19,7 +19,7 @@ typedef void (*rp_reactor_cb)(struct rp_reactor_s *reactor);
 typedef void (*rp_send_cb)(struct rp_reactor_s *reactor, struct rp_reactor_data_send_req_payload_send_s *send_req, struct rp_stream_s *result_stream);
 typedef void (*rp_data_recv_cb)(zend_object *server, struct rp_reactor_data_send_req_payload_recv_s *recv_req);
 typedef void (*rp_accepted_cb)(zend_object *server, struct rp_stream_s *client, char *ipc_data, size_t ipc_data_len);
-typedef void (*rp_reactor_async_init_cb)(void *data);
+typedef void (*rp_reactor_async_cb)(void *data);
 typedef uv_connection_cb rp_connection_cb;
 typedef uv_udp_recv_cb rp_recv_cb;
 

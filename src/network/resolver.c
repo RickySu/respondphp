@@ -99,7 +99,7 @@ PHP_METHOD(respond_network_resolver, getaddrinfo)
     info->info.addr.hints.ai_socktype = SOCK_DGRAM;
     RETVAL_ZVAL(&info->promise, 1, 0);
     zend_string_addref(&info->info.addr.hostname);
-    rp_reactor_async_init((rp_reactor_async_init_cb) getaddrinfo_async_cb, info);
+    rp_reactor_async_init((rp_reactor_async_cb) getaddrinfo_async_cb, info);
 }
 
 static void getnameinfo_async_cb(rp_resolver_into_t *info)
@@ -138,7 +138,7 @@ PHP_METHOD(respond_network_resolver, getnameinfo)
         return;
     }
 
-    rp_reactor_async_init((rp_reactor_async_init_cb) getnameinfo_async_cb, info);
+    rp_reactor_async_init((rp_reactor_async_cb) getnameinfo_async_cb, info);
 }
 
 PHP_METHOD(respond_network_resolver, __construct)

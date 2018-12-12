@@ -84,8 +84,6 @@ static void rp_reactor_ipc_receive(uv_pipe_t *pipe, int status, const uv_buf_t *
         return;
     }
 
-    fprintf(stderr, "reactor ipc recv: %d %p\n", status, reactor_ext->reactor);
-
     if((client = rp_accept_client(pipe, reactor_ext->reactor)) != NULL) {
         reactor_ext->reactor->cb.stream.accepted(reactor_ext->reactor->server, client, reactor_ext->data, reactor_ext->data_len);
     }
@@ -228,7 +226,6 @@ static int rp_init_worker_server(int worker_ipc_fd, int worker_data_fd)
         }
     }
 
-    fprintf(stderr, "data pipe: %d %d\n", getpid(), ret);
     return ret;
 }
 
@@ -247,6 +244,8 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
             if(rp_reactors_count() > 0) {
                 rp_register_pdeath_sig(&main_loop, SIGINT, rp_signal_hup_handler);
                 rp_init_actor_server(worker_ipc_fd, worker_data_fd);
+                uv_pipe_init(&main_loop, &routine_pipe, 1);
+                uv_pipe_open(&routine_pipe, routine_ipc_fd);
             }
             rp_reactor_async_init_execute();
             break;
@@ -255,11 +254,12 @@ int rp_init_reactor(int worker_ipc_fd, int worker_data_fd, int routine_ipc_fd)
             rp_init_worker_server(worker_ipc_fd, worker_data_fd);
             uv_pipe_init(&main_loop, &routine_pipe, 1);
             uv_pipe_open(&routine_pipe, routine_ipc_fd);
-            fprintf(stderr, "worker: %d\n", getpid());
+            rp_reactor_async_free_execute();
             break;            
         case ROUTINE:
             rp_register_pdeath_sig(&main_loop, SIGHUP, rp_signal_hup_handler);
             rp_init_routine_server(routine_ipc_fd);
+            rp_reactor_async_free_execute();
             break;
         case WORKER_MANAGER:
             break;
@@ -330,17 +330,18 @@ static void rp_signal_hup_handler(uv_signal_t* signal, int signum)
     uv_stop(&main_loop);
 }
 
-void rp_reactor_async_init(rp_reactor_async_init_cb callback, void *data)
+void rp_reactor_async_init_ex(rp_reactor_async_cb init_callback, rp_reactor_async_cb free_callback, void *data)
 {
     async_init_t *async_init;
 
     if(main_loop_inited()){
-        callback(data);
+        init_callback(data);
         return;
     }
 
     async_init = rp_malloc(sizeof(async_init_t));
-    async_init->callback = callback;
+    async_init->init_callback = init_callback;
+    async_init->free_callback = free_callback;
     async_init->data = data;
     zend_hash_next_index_insert_ptr(&rp_reactors_async_inits, async_init);
 }
@@ -355,6 +356,24 @@ void rp_reactor_async_init_execute()
             zend_hash_move_forward(&rp_reactors_async_inits)
             ) {
         async_init = Z_PTR_P(current);
-        async_init->callback(async_init->data);
+        if(async_init->init_callback) {
+            async_init->init_callback(async_init->data);
+        }
+    }
+}
+
+void rp_reactor_async_free_execute()
+{
+    zval *current;
+    async_init_t *async_init;
+    for(
+            zend_hash_internal_pointer_reset(&rp_reactors_async_inits);
+            current = zend_hash_get_current_data(&rp_reactors_async_inits);
+            zend_hash_move_forward(&rp_reactors_async_inits)
+            ) {
+        async_init = Z_PTR_P(current);
+        if(async_init->free_callback) {
+            async_init->free_callback(async_init->data);
+        }
     }
 }

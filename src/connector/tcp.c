@@ -60,5 +60,5 @@ PHP_METHOD(respond_connector_tcp, connect)
         return;
     }
 
-    rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
+    rp_reactor_async_init((rp_reactor_async_cb) connect_async_cb, connector);
 }

@@ -78,7 +78,7 @@ PHP_METHOD(respond_connector_secure, connect)
     }
 
     zend_string_addref(&connector->server_name);
-    rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
+    rp_reactor_async_init((rp_reactor_async_cb) connect_async_cb, connector);
 }
 
 static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)

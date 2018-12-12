@@ -44,5 +44,5 @@ PHP_METHOD(respond_connector_pipe, connect)
     rp_make_promise_object(&connector->promise);
     RETVAL_ZVAL(&connector->promise, 1, 0);
     zend_string_addref(connector->addr.socket_path);
-    rp_reactor_async_init((rp_reactor_async_init_cb) connect_async_cb, connector);
+    rp_reactor_async_init((rp_reactor_async_cb) connect_async_cb, connector);
 }
