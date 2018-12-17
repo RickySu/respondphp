@@ -2,20 +2,15 @@
 Check for Respond\Network\Resolver
 --FILE--
 <?php
-$promise = Respond\Network\Resolver::getaddrinfo('a.root-servers.net');
-$promise
+$promise0 = Respond\Network\Resolver::getaddrinfo('a.root-servers.net');
+$promise1 = Respond\Network\Resolver::getnameinfo('198.41.0.4');
+$promise2 = Respond\Network\Resolver::getnameinfo('2001:503:ba3e::2:30');
+$promises = Respond\Async\Promise::all([$promise0, $promise1, $promise2]);
+$promises
     ->then(function($result){
-        print_r($result);
-    });
-$promise = Respond\Network\Resolver::getnameinfo('198.41.0.4');
-$promise
-    ->then(function($result){
-        echo "$result\n";
-    });
-$promise = Respond\Network\Resolver::getnameinfo('2001:503:ba3e::2:30');
-$promise
-    ->then(function($result){
-        echo "$result\n";
+        print_r($result[0]);
+        echo $result[1]."\n";
+        echo $result[2]."\n";
     });
 Respond\Event\Loop::create()->run();
 
