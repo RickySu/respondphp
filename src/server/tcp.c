@@ -33,7 +33,6 @@ static void server_init(rp_reactor_t *reactor)
 
 #ifdef HAVE_REUSEPORT
     int status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &(int){ 1 }, sizeof(int));
-    fprintf(stderr, "reuse port:%d %d\n", getpid(), status);
 #endif
 
     uv_tcp_open(&reactor->handler.tcp, sockfd);
@@ -43,7 +42,6 @@ static void server_init(rp_reactor_t *reactor)
     uint16_t port;
     char addr_str[INET6_ADDRSTRLEN];
     sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
-    fprintf(stderr, "tcp listen: %s:%d\n", addr_str, port);
 }
 
 //HAVE_REUSEPORT
@@ -78,7 +76,6 @@ static void socket_connection_cb(rp_reactor_t *reactor, int status)
     uv_tcp_init(&main_loop, (uv_tcp_t *) client);
 
     if (uv_accept((uv_stream_t *) &reactor->handler.tcp, (uv_stream_t*) client) == 0) {
-        fprintf(stderr, "socket accept: %d\n", getpid());
         reactor->cb.stream.accepted(reactor->server, client, NULL, 0);
         return;
     }
@@ -123,13 +120,9 @@ PHP_METHOD(respond_server_tcp, __construct)
         host = zend_string_init("::", 2, 1);
     }
 
-    fprintf(stderr, "host: %s %ld\n", host->val, port);
-
     if(!rp_addr(&addr, host, port & 0xffff)){
         return;
     }
-
-    fprintf(stderr, "tcp:%p\n", &resource->event_hook);
 
     reactor = rp_reactors_add_new(self);
     memcpy(&reactor->addr, &addr, sizeof(rp_reactor_addr_t));
