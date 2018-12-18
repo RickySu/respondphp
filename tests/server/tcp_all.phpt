@@ -5,8 +5,9 @@ Check for Respond\Server\Tcp for IP v4 and v6
 $randomPort = rand(50000, 60000);
 $pid = pcntl_fork();
 if($pid) {
-    usleep(100000);
-    $fp = stream_socket_client("tcp://127.0.0.1:$randomPort");
+    while(!($fp = @stream_socket_client("tcp://127.0.0.1:$randomPort"))){
+        usleep(1000);
+    }
     fwrite($fp, "hello world 1!");
     $result = fread($fp, 1024);
     fclose($fp);

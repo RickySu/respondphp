@@ -5,8 +5,9 @@ Check for Respond\Server\Pipe
 $socketPath = sys_get_temp_dir()."/".uniqid('test_sock').".sock";
 $pid = pcntl_fork();
 if($pid) {
-    usleep(100000);
-    $fp = stream_socket_client("unix://$socketPath");
+    while(!($fp = @stream_socket_client("unix://$socketPath"))){
+        usleep(1000);
+    }
     fwrite($fp, "hello world!");
     $result = fread($fp, 1024);
     fclose($fp);
