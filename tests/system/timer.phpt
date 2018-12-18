@@ -12,7 +12,7 @@ $promise
     })
 ;
 
-$promise1 = Respond\System\Timer::timeout(2000);
+$promise1 = Respond\System\Timer::timeout(300);
 $promise1
     ->then(function(){
         echo "time out 1\n";
@@ -22,7 +22,7 @@ $promise1
     })
 ;
 
-$promise2 = Respond\System\Timer::timeout(1000);
+$promise2 = Respond\System\Timer::timeout(100);
 $promise2
     ->then(function() use($promise){
         echo "time out 2\n";

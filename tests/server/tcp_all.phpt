@@ -4,13 +4,13 @@ Check for Respond\Server\Tcp for IP v4 and v6
 <?php
 $pid = pcntl_fork();
 if($pid) {
-    sleep(1);
-    $fp = fsockopen('127.0.0.1', 8080, $err, $errStr);
+    usleep(100000);
+    $fp = stream_socket_client("tcp://127.0.0.1:8080");
     fwrite($fp, "hello world 1!");
     $result = fread($fp, 1024);
     fclose($fp);
     echo "result: $result\n";
-    $fp = fsockopen('[::1]', 8080, $err, $errStr);
+    $fp = stream_socket_client("tcp://[::1]:8080");
     fwrite($fp, "hello world 2!");
     $result = fread($fp, 1024);
     fclose($fp);

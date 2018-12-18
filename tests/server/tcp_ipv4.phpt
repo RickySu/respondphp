@@ -4,8 +4,8 @@ Check for Respond\Server\Tcp for IP v4
 <?php
 $pid = pcntl_fork();
 if($pid) {
-    sleep(1);
-    $fp = fsockopen('127.0.0.1', 8080, $err, $errStr);
+    usleep(100000);
+    $fp = stream_socket_client("tcp://127.0.0.1:8080");
     fwrite($fp, "hello world!");
     $result = fread($fp, 1024);
     fclose($fp);
