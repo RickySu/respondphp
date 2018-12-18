@@ -21,10 +21,11 @@ static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *da
 static void udp_send_cb(rp_udp_send_t *udp_send, int status);
 static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string *data, rp_reactor_addr_t *addr);
 static void ipc_udp_send_cb(rp_udp_send_t *udp_send, int status);
-static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf);
+static void ipc_udp_send_result_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf);
 static void actor_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port);
 static void worker_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host, long port);
 static void result_send_cb(uv_write_t* req, int status);
+static void ipc_udp_send_result_free_cb(uv_handle_t *handle);
 
 static void server_init(rp_reactor_t *reactor)
 {
@@ -181,6 +182,7 @@ static void actor_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host
 {
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
+    fprintf(stderr, "udp actor mode %p\n", resource);
     if(port != -1) {
 
         if(!rp_addr(&addr, host, port & 0xffff)){
@@ -282,14 +284,27 @@ PHP_METHOD(respond_server_udp, send)
 #if HAVE_REUSEPORT
     result = udp_send_data(resource->reactor, data, &addr);
 #else
-    result = ipc_udp_send_data(resource->reactor, data, &addr);
+    fprintf(stderr, "resource: %p\n", resource);
+    if(resource->flag & RP_UDP_SERVER_WORKER_MODE){
+        result = udp_send_data(resource->reactor, data, &addr);
+    }
+    else {
+        result = ipc_udp_send_data(resource->reactor, data, &addr);
+    }
 #endif
 
     RETVAL_ZVAL(&result->promise, 1, 0);
 }
 
-static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf)
+static void ipc_udp_send_result_free_cb(uv_handle_t *handle)
 {
+    rp_udp_send_resul_t *result = FETCH_POINTER(handle, rp_udp_send_resul_t, worker_pipe);
+    rp_free(result);
+}
+
+static void ipc_udp_send_result_receive(uv_pipe_t *pipe, int status, const uv_buf_t *buf)
+{
+    rp_udp_send_resul_t *result = FETCH_POINTER(pipe, rp_udp_send_resul_t, worker_pipe);
     zval send_result;
     if(status >= 0){
         ZVAL_LONG(&send_result, *((int *) buf->base));
@@ -299,14 +314,15 @@ static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status,
         rp_reject_promise_long(&result->promise, status);
     }
     ZVAL_PTR_DTOR(&result->promise);
-    uv_close((uv_handle_t *) &result->worker_pipe, (uv_close_cb) rp_free_cb);
     rp_free(buf->base);
+    uv_close((uv_handle_t *) &result->worker_pipe, (uv_close_cb) ipc_udp_send_result_free_cb);
 }
 
 static void udp_send_cb(rp_udp_send_t *udp_send, int status)
 {
     rp_udp_send_resul_t *result = (rp_udp_send_resul_t *) udp_send;
     zval send_result;
+    fprintf(stderr, "result %p %p %d\n", result, &udp_send->send, getpid());
 
     if(status >= 0){
         ZVAL_LONG(&send_result, status);
@@ -326,6 +342,7 @@ static rp_udp_send_resul_t *udp_send_data(rp_reactor_t *reactor, zend_string *da
     rp_udp_send_resul_t *result;
     uv_buf_t buf;
     result = emalloc(sizeof(rp_udp_send_resul_t));
+    fprintf(stderr, "udp_send_data: %p %d\n", result, getpid());
     rp_make_promise_object(&result->promise);
     result->data = data;
     buf.base = data->val;
@@ -371,7 +388,7 @@ static rp_udp_send_resul_t *ipc_udp_send_data(rp_reactor_t *reactor, zend_string
 
     uv_pipe_init(&main_loop, &result->worker_pipe, 0);
     uv_pipe_open(&result->worker_pipe, fd[1]);
-    fprintf(stderr, "read start: %d\n", getpid());
+    fprintf(stderr, "read start: %p %p %d\n", &result->worker_pipe, result, getpid());
     uv_read_start(&result->worker_pipe, rp_alloc_buffer, (uv_read_cb) ipc_udp_send_result_receive);
 
     rp_reactor_ipc_send_ex(reactor, (uv_stream_t *) &result->actor_pipe, NULL, req, size_of_req_data, &ipc_pipe);
