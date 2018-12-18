@@ -100,7 +100,6 @@ static void rp_reactor_actor_ipc_receive(uv_pipe_t *pipe, int status, const uv_b
         return;
     }
 
-    fprintf(stderr, "reactor actor ipc recv: %d %p\n", status, reactor_ext->reactor);
     rp_reactor_data_receive(pipe, status, buf);
 }
 
@@ -118,7 +117,6 @@ static void rp_reactor_data_receive(uv_pipe_t *pipe, int status, const uv_buf_t 
 
     switch(req->type) {
         case RP_SEND:
-            fprintf(stderr, "rp_send:%p %p\n", req, buf->base);
             if((result_stream = rp_accept_client(pipe, reactor_ext->reactor)) != NULL) {
                 reactor_ext->reactor->cb.dgram.send(reactor_ext->reactor, &req->payload.send, result_stream);
             }
@@ -307,7 +305,6 @@ int rp_reactor_data_send(rp_reactor_t *reactor, uv_close_cb close_cb, char *data
     memcpy(&send_req->reactor_ext.data, data, data_len);
     send_req->buf.base = (char *) &send_req->reactor_ext;
     send_req->buf.len = sizeof(rp_reactor_ext_t) + data_len;
-    fprintf(stderr, "data send: %.*s\n", data_len, data);
     return uv_write((uv_write_t *) send_req, (uv_stream_t *) &data_pipe, &send_req->buf, 1, (uv_write_cb) rp_free_cb);
 }
 

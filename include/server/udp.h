@@ -36,7 +36,7 @@ typedef struct {
     uv_pipe_t worker_pipe;
     uv_pipe_t actor_pipe;
     zval promise;
-} rp_udp_send_resul_t;
+} rp_udp_send_result_t;
 
 PHP_METHOD(respond_server_udp, close);
 PHP_METHOD(respond_server_udp, send);
