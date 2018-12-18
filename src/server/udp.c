@@ -34,7 +34,6 @@ static void server_init(rp_reactor_t *reactor)
 
 #ifdef HAVE_REUSEPORT
     int status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &(int){ 1 }, sizeof(int));
-    fprintf(stderr, "reuse port:%d %d\n", getpid(), status);
 #endif
 
     uv_udp_open(&reactor->handler.udp, sockfd);
@@ -48,7 +47,6 @@ static void server_init(rp_reactor_t *reactor)
     uint16_t port;
     char addr_str[INET6_ADDRSTRLEN];
     sock_addr(&reactor->addr, addr_str, sizeof(addr_str), &port);
-    fprintf(stderr, "udp listen: %s:%d\n", addr_str, port);
 }
 
 CLASS_ENTRY_FUNCTION_D(respond_server_udp)
@@ -113,9 +111,7 @@ static void actor_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t* 
         memcpy(&req->payload.recv.addr, addr, sockaddr_size);
         req->payload.recv.data_len = nread;
         memcpy(&req->payload.recv.data, buf->base, nread);
-        fprintf(stderr, "recv data: %.*s\n", req->payload.recv.data_len, &req->payload.recv.data);
         int ret = rp_reactor_data_send(reactor, rp_free_cb, req, size_of_req_data);
-        fprintf(stderr, "recv data send %p %d %s\n", reactor, ret, uv_strerror(ret));
         rp_free(req);
     }
     rp_free(buf->base);
@@ -139,7 +135,6 @@ static void worker_recv_cb(rp_reactor_t *reactor, ssize_t nread, const uv_buf_t*
         memcpy(&recv->addr, addr, sockaddr_size);
         recv->data_len = nread;
         memcpy(&recv->data, buf->base, nread);
-        fprintf(stderr, "recv data: %.*s\n", recv->data_len, &recv->data);
         reactor->cb.dgram.data_recv(reactor->server, recv);
         rp_free(recv);
     }
@@ -152,7 +147,6 @@ static void data_actor_recv_cb(zend_object *server, rp_reactor_data_send_req_pay
     char addr_str[40];
     uint16_t port;
     zval param[4];
-fprintf(stderr, "recv: %d %d %d\n", recv_req->addr.sa_family, AF_INET, AF_INET6);
     sock_addr(&recv_req->addr, addr_str, sizeof(addr_str), &port);
     ZVAL_OBJ(&param[0], server);
     ZVAL_STRING(&param[1], addr_str);
@@ -187,7 +181,6 @@ static void actor_udp_init(rp_udp_ext_t *resource, zval *self, zend_string *host
 {
     rp_reactor_addr_t addr;
     rp_reactor_t *reactor;
-    fprintf(stderr, "udp actor mode\n");
     if(port != -1) {
 
         if(!rp_addr(&addr, host, port & 0xffff)){
@@ -298,8 +291,7 @@ PHP_METHOD(respond_server_udp, send)
 static void ipc_udp_send_result_receive(rp_udp_send_resul_t *result, int status, const uv_buf_t *buf)
 {
     zval send_result;
-    fprintf(stderr, "result %p\n", result);
-    if(status > 0){
+    if(status >= 0){
         ZVAL_LONG(&send_result, *((int *) buf->base));
         rp_resolve_promise(&result->promise, &send_result);
     }
@@ -315,9 +307,8 @@ static void udp_send_cb(rp_udp_send_t *udp_send, int status)
 {
     rp_udp_send_resul_t *result = (rp_udp_send_resul_t *) udp_send;
     zval send_result;
-    fprintf(stderr, "result %p %d\n", result, getpid());
 
-    if(status > 0){
+    if(status >= 0){
         ZVAL_LONG(&send_result, status);
         rp_resolve_promise(&result->promise, &send_result);
     }
