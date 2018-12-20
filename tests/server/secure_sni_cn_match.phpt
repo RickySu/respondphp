@@ -7,7 +7,7 @@ $hostName = 'localhost.localdomain';
 $randomPort = rand(50000, 60000);
 $pid = pcntl_fork();
 if($pid) {
-    sleep(1);
+    usleep(500000);
     $streamContext = stream_context_create(array(
         'ssl' => array(
             'peer_name'         => $hostName,

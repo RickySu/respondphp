@@ -18,8 +18,8 @@ if($pid) {
 }
 
 $server = new Respond\Server\Tcp($randomPort, '127.0.0.1');
-$server->on('connect', function(Respond\Stream\Connection $connection){
-    $connection->on('data', function(Respond\Stream\Connection $connection, $data){
+$server->on('connect', function(Respond\Stream\ConnectionInterface $connection){
+    $connection->on('data', function(Respond\Stream\ConnectionInterface $connection, $data){
         $connection->end($data);
     });
 });
