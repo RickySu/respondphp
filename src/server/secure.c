@@ -71,8 +71,6 @@ static int ssl_ctx_set_pkey_password_cb(char *buf, int size, int rwflag, void *u
 {
     zend_string *passphrase = (zend_string *) userdata;
     size = (passphrase->len > size) ? size : passphrase->len;
-    fprintf(stderr, "pass cb: %p %d %p\n", buf, size, userdata);
-    fprintf(stderr, "pass cb: %.*s\n", passphrase->len, passphrase->val);
     memcpy(buf, passphrase->val, size);
     return size;
 }
@@ -111,7 +109,6 @@ static zend_bool ssl_ctx_set_pkey(SSL_CTX *ctx, zval *pem_pkey, zval *passphrase
 
     ret = SSL_CTX_use_PrivateKey(ctx, pkey);
     EVP_PKEY_free(pkey);
-    zend_print_zval_r(pem_pkey, 0);
     return ret;
 }
 
@@ -165,7 +162,6 @@ static zend_bool ssl_ctx_set_cert(SSL_CTX *ctx, zval *pem_cert)
         }
     }
 
-    zend_print_zval_r(pem_cert, 0);
     X509_free(cert);
     BIO_free(cert_bio);
     return 1;
@@ -177,20 +173,16 @@ static int ssl_sni_cb(SSL *ssl, int *ad, rp_server_secure_ext_t *resource)
     zend_string *ctx_hostname;
     zend_ulong index = 0;
     const char *servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
-    fprintf(stderr, "sni cb %s\n", servername);
 
     for(zend_hash_internal_pointer_reset(&resource->ssl_ctx_ht); current = zend_hash_get_current_data(&resource->ssl_ctx_ht); zend_hash_move_forward(&resource->ssl_ctx_ht)) {
         if(zend_hash_get_current_key(&resource->ssl_ctx_ht, &ctx_hostname, index) == HASH_KEY_IS_STRING){
-            fprintf(stderr, "host: %s %d\n", ctx_hostname->val, index);
             if(servername && strncmp(ctx_hostname->val, servername, ctx_hostname->len) == 0){
-                fprintf(stderr, "sni match %s\n", servername);
                 break;
             }
         }
     }
 
     if(current) {
-        fprintf(stderr, "sni add %p\n", Z_PTR_P(current));
         SSL_set_SSL_CTX(ssl, Z_PTR_P(current));
     }
     return SSL_TLSEXT_ERR_OK;
@@ -207,7 +199,6 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
             ssl_ctx_set_pkey(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_pk")), zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("passphrase"))) &&
             ssl_ctx_set_cert(ctx, zend_hash_str_find(Z_ARRVAL_P(current), ZEND_STRL("local_cert")))
         )){
-            fprintf(stderr, "error ctx\n");
             SSL_CTX_free(ctx);
             continue;
         }
@@ -218,7 +209,6 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
             zend_hash_str_update_ptr(&resource->ssl_ctx_ht, ZEND_STRL("*"), ctx);
         }
         else{
-            fprintf(stderr, "add %p %.*s\n", ctx, Z_STRLEN_P(hostname), Z_STRVAL_P(hostname));
             zend_hash_update_ptr(&resource->ssl_ctx_ht, Z_STR_P(hostname), ctx);
         }
 
@@ -227,10 +217,8 @@ static void ssl_ctx_parse(zval *array, rp_server_secure_ext_t *resource)
 
 #ifdef HAVE_OPENSSL_TLS_SNI
     if(resource->ctx){
-        fprintf(stderr, "sni init\n");
         SSL_CTX_set_tlsext_servername_callback(resource->ctx, ssl_sni_cb);
         SSL_CTX_set_tlsext_servername_arg(resource->ctx, resource);
-        fprintf(stderr, "sni init done\n");
     }
 #endif
 }
@@ -258,12 +246,7 @@ PHP_METHOD(respond_server_secure, __construct)
     }
 
     hook = (event_hook_t *) ((void *) Z_OBJ_P(socket) - sizeof(event_hook_t));
-    fprintf(stderr, "hook:%p\n", hook);
     rp_event_emitter_on_intrenal_ex(hook, ZEND_STRL("connect"), (rp_event_emitter_internal_cb) accepted_cb, resource);
-    fprintf(stderr, "hook:%p ok\n", hook);
-    fprintf(stderr, "resource:%p\n", resource);
-//    zend_print_zval_r(socket, 0);
-//    zend_print_zval_r(options, 0);
     resource->socket_zo = Z_OBJ_P(socket);
     Z_ADDREF_P(socket);
     ssl_ctx_parse(zend_hash_str_find(Z_ARRVAL_P(options), ZEND_STRL("ssl")), resource);
@@ -274,12 +257,9 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
 {
     int ret, err;
     zval connection_secure;
-//    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
-    fprintf(stderr, "handshake read %d %p\n", Z_STRLEN(param[1]), connection_secure_resource);
 
     if((ret = SSL_do_handshake(connection_secure_resource->ssl)) == 1){
         connection_secure_resource->handshake = NULL;
-        fprintf(stderr, "handshake ok\n");
         ZVAL_OBJ(&connection_secure, &connection_secure_resource->zo);
         zval_add_ref(&connection_secure);
         rp_event_emitter_emit_internal(&((rp_server_secure_ext_t *)connection_secure_resource->creater_resource)->event_hook, ZEND_STRL("connect"), 1, &connection_secure);
@@ -289,18 +269,12 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
     write_bio_to_socket(connection_secure_resource);
     err = SSL_get_error(connection_secure_resource->ssl, ret);
     switch(err){
-        case SSL_ERROR_WANT_READ:
-            fprintf(stderr, "ssl want read\n");
-            break;
-        case SSL_ERROR_WANT_WRITE:
-            fprintf(stderr, "ssl want write:%d\n", err);
-            break;
         case SSL_ERROR_SSL:
-            fprintf(stderr, "ssl error ssl:%d\n", err);
             connection_secure_resource->connection->connection_methods.close(connection_secure_resource->connection);
             break;
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
         default:
-            fprintf(stderr, "ssl error:%d\n", err);
             break;
     }
 }
@@ -310,15 +284,11 @@ static void accepted_cb(int n_param, zval *param, rp_server_secure_ext_t *server
     rp_stream_connection_ext_t *connection_connection_resource = FETCH_OBJECT_RESOURCE(&param[0], rp_stream_connection_ext_t);
     rp_stream_secure_ext_t *connection_secure_resource;
     zval connection_secure;
-    fprintf(stderr, "connect %d %p\n", n_param, server_resource);
     rp_stream_secure_factory(SSL_new(server_resource->ctx), &param[0], &connection_secure);
     connection_secure_resource = FETCH_OBJECT_RESOURCE(&connection_secure, rp_stream_secure_ext_t);
     connection_secure_resource->creater_resource = server_resource;
     connection_secure_resource->handshake = handshake_read_cb;
     SSL_set_accept_state(connection_secure_resource->ssl);
-//    write_bio_to_socket(connection_secure_resource);
-    fprintf(stderr, "accept cb:%p\n", connection_secure_resource);
-//    ZVAL_PTR_DTOR(&connection_secure);
 }
 
 PHP_METHOD(respond_server_secure, close)
@@ -338,7 +308,6 @@ PHP_METHOD(respond_server_secure, on)
         return;
     }
     rp_event_emitter_on(&resource->event_hook, event->val, event->len, hook);
-//    zend_print_zval_r(&resource->event_hook.hook, 0);
 }
 
 PHP_METHOD(respond_server_secure, off)

@@ -106,7 +106,6 @@ void rp_event_emitter_on_intrenal_ex(event_hook_t *event_hook, const char *event
     internal_cb = rp_malloc(sizeof(ht_internal_cb_t));
     internal_cb->callback = callback;
     internal_cb->data = data;
-fprintf(stderr, "HT: %p\n", ht);
     zend_hash_next_index_insert_ptr(ht, internal_cb);
 }
 
@@ -118,7 +117,6 @@ void rp_event_emitter_emit_internal(event_hook_t *event_hook, const char *event,
 
     if((array = zend_hash_str_find(&event_hook->internal_hook, event, event_len)) != NULL) {
         ht = Z_PTR_P(array);
-        fprintf(stderr, "emit HT: %p\n", ht);
 
         zend_hash_internal_pointer_reset(ht);
         while ((current = zend_hash_get_current_data(ht)) != NULL) {

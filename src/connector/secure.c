@@ -107,8 +107,6 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
     zval connection_secure, exception, err_message;
     X509 *peer_cert;
     rp_secure_connector_t *connector;
-//    BIO_write(connection_secure_resource->read_bio, Z_STRVAL(param[1]), Z_STRLEN(param[1]));
-    fprintf(stderr, "handshake read %d %p\n", Z_STRLEN(param[1]), connection_secure_resource);
 
     if((ret = SSL_do_handshake(connection_secure_resource->ssl)) == 1){
         connection_secure_resource->handshake = NULL;
@@ -131,7 +129,6 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
                 X509_free(peer_cert);
                 return;
             }
-            fprintf(stderr, "server name matched\n");
             ZVAL_OBJ(&connection_secure, &connection_secure_resource->zo);
             zval_add_ref(&connection_secure);
             rp_resolve_promise(&connector->connector.promise, &connection_secure);
@@ -145,13 +142,10 @@ static void handshake_read_cb(int n_param, zval *param, rp_stream_secure_ext_t *
     err = SSL_get_error(connection_secure_resource->ssl, ret);
     switch(err){
         case SSL_ERROR_WANT_READ:
-            fprintf(stderr, "ssl want read\n");
             break;
         case SSL_ERROR_WANT_WRITE:
-            fprintf(stderr, "ssl want write:%d\n", err);
             break;
         default:
-            fprintf(stderr, "ssl error:%d\n", err);
             break;
     }
 }
