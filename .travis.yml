@@ -25,6 +25,6 @@ script:
     -     phpize
     -     ./configure --with-openssl --enable-debug-respondphp
     -     make clean all
-    -     NO_INTERACTION=1 make test
+    -     NO_INTERACTION=1 php run-tests.php --show-diff -d extension=modules/respondphp.so
     -     php thirdparty/composer.phar -dphpsrc install
     -     php phpsrc/vendor/bin/phpunit --bootstrap phpsrc/tests/bootstrap.php phpsrc/tests
