@@ -259,7 +259,7 @@ PHP_METHOD(respond_stream_connection, getRemoteAddress)
     rp_stream_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_stream_connection_ext_t);
 
     if(resource->stream->stream.stream.type == UV_TCP) {
-        rp_stream_connection_tcp_getRemoteAddress(&resource->stream->stream.tcp, return_value);
+        rp_stream_connection_tcp_get_remote_address(&resource->stream->stream.tcp, return_value, NULL);
         return;
     }
 
@@ -272,7 +272,7 @@ PHP_METHOD(respond_stream_connection, getLocalAddress)
     rp_stream_connection_ext_t *resource = FETCH_OBJECT_RESOURCE(self, rp_stream_connection_ext_t);
 
     if(resource->stream->stream.stream.type == UV_TCP) {
-        rp_stream_connection_tcp_getLocalAddress(&resource->stream->stream.tcp, return_value);
+        rp_stream_connection_tcp_get_local_address(&resource->stream->stream.tcp, return_value, NULL);
         return;
     }
 

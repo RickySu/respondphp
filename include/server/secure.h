@@ -2,6 +2,8 @@
 #define _RP_SERVER_SECURE_H
 #ifdef HAVE_OPENSSL
 #include "internal/event_emitter.h"
+#include "stream/secure.h"
+
 
 CLASS_ENTRY_FUNCTION_D(respond_server_secure);
 

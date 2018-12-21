@@ -56,6 +56,7 @@ PHP_MINIT_FUNCTION(respondphp)
     CLASS_ENTRY_FUNCTION_C(respond_network_resolver);
     CLASS_ENTRY_FUNCTION_C(respond_system_timer);
     CLASS_ENTRY_FUNCTION_C(respond_async_cancelable_promise);
+    CLASS_ENTRY_FUNCTION_C(respond_server_http);
 #ifdef HAVE_OPENSSL
     CLASS_ENTRY_FUNCTION_C(respond_connector_secure);
     CLASS_ENTRY_FUNCTION_C(respond_server_secure);

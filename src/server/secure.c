@@ -1,8 +1,6 @@
 #include "respondphp.h"
 #ifdef HAVE_OPENSSL
 #include "server/secure.h"
-#include "stream/connection.h"
-#include "stream/secure.h"
 
 DECLARE_FUNCTION_ENTRY(respond_server_secure) =
 {

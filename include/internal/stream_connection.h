@@ -2,8 +2,8 @@
 #define _RP_INTERNAL_SOCKET_CONNECTION_H
 #include "interface/stream_connection_interface.h"
 
-void rp_stream_connection_tcp_getRemoteAddress(uv_tcp_t *handle, zval *address);
-void rp_stream_connection_tcp_getLocalAddress(uv_tcp_t *handle, zval *address);
+void rp_stream_connection_tcp_get_remote_address(uv_tcp_t *handle, zval *z_address, zval *z_port);
+void rp_stream_connection_tcp_get_local_address(uv_tcp_t *handle, zval *z_address, zval *z_port);
 
 #define TRAIT_FUNCTION_ENTRY_ME_stream_connection(ce) \
     PHP_ME(ce, getRemoteAddress, ARGINFO(ce, getRemoteAddress), ZEND_ACC_PUBLIC) \

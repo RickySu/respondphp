@@ -137,6 +137,7 @@ if test "$PHP_RESPONDPHP" != "no"; then
     src/async/cancelable_promise.c
     src/server/udp.c
     src/server/tcp.c
+    src/server/http.c
     src/server/pipe.c
     src/server/routine.c
     src/server/secure.c

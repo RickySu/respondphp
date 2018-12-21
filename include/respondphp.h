@@ -61,6 +61,7 @@ PHP_RSHUTDOWN_FUNCTION(respondphp);
 DECLARE_CLASS_ENTRY(respond_event_loop);
 DECLARE_CLASS_ENTRY(respond_connector_pipe);
 DECLARE_CLASS_ENTRY(respond_connector_tcp);
+DECLARE_CLASS_ENTRY(respond_server_http);
 DECLARE_CLASS_ENTRY(respond_server_tcp);
 DECLARE_CLASS_ENTRY(respond_server_udp);
 DECLARE_CLASS_ENTRY(respond_server_pipe);
@@ -109,6 +110,14 @@ void rp_reactor_async_free_execute();
 #ifdef HAVE_OPENSSL
 void rp_stream_secure_factory(SSL *ssl, zval *connection_connection, zval *connection_secure);
 #endif
+
+static zend_always_inline zend_string *rp_init_empty_zend_string(size_t n)
+{
+    zend_string *string;
+    string = zend_string_alloc(n, 0);
+    string->len = 0;
+    return string;
+}
 
 static zend_always_inline void rp_reject_promise(zval *promise, zval *result)
 {
